@@ -971,7 +971,7 @@ function calcViaticos(){
 
   if(km<=200){
     dias_comida=tanks;                  // 1 día de comida por tanque
-    noches_hotel=tanks>=2?tanks:0;    // hotel solo si 2+ tanques
+    noches_hotel=tanks>=2?1:0;         // traslados cortos: 1 noche aunque sean 2+ tanques (sale temprano, instala todo y regresa)
     traslado_total=km*VT.km_rate*2;
     traslado_desc=`${km} km × ${VT.km_rate}/km × 2 = $${traslado_total.toFixed(0)}`;
   } else if(km<=499){
@@ -1220,16 +1220,8 @@ function renderLinks(fallback){
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:#0D1B2A;margin-bottom:10px;">
       ✅ Folio: ${S._folio}
     </div>
-    <p style="margin-bottom:12px;color:#3D4D63;">Comparte estos links únicos — cada uno es de un solo uso:</p>
-    <div style="margin-bottom:10px;padding:10px;background:#fff;border-radius:8px;border:1px solid #D6DBE4;">
-      <b>🔧 Link para el INSTALADOR:</b><br>
-      <input style="width:100%;margin-top:4px;padding:6px 8px;border:1px solid #D6DBE4;border-radius:6px;font-size:12px;font-family:monospace;" readonly value="${S._instLink}" onclick="this.select()">
-    </div>
-    <div style="padding:10px;background:#fff;border-radius:8px;border:1px solid #D6DBE4;">
-      <b>🚛 Link para el FLETERO:</b><br>
-      <input style="width:100%;margin-top:4px;padding:6px 8px;border:1px solid #D6DBE4;border-radius:6px;font-size:12px;font-family:monospace;" readonly value="${S._fletLink}" onclick="this.select()">
-    </div>
-  `;
+    <p style="color:#3D4D63;">Los links de acceso para el instalador y el fletero fueron enviados por correo electrónico. ✉️</p>
+    `;
 }
 
 function renderDone(){
@@ -1344,13 +1336,6 @@ function getStockRec(m3){
   if(exact) return {type:'exact',t:exact};
   // Nearest above within constraint
   const up=eligible.find(t=>t.m3>m3);
-  // Nearest below within constraint
-  const down=[...eligible].reverse().find(t=>t.m3<m3);
-  // If within 15% below, suggest going down
-  if(down){
-    const pct=(m3-down.m3)/m3*100;
-    if(pct<=15) return {type:'smaller',t:down,save:m3-down.m3,pct:Math.round(pct)};
-  }
   // If diamMax constraint excludes the natural next-up, highlight the constrained alternative
   if(diamMax && up){
     const naturalUp=sorted.find(t=>t.m3>m3);
