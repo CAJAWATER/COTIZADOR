@@ -674,12 +674,12 @@ textarea{resize:vertical;min-height:72px;}
           <div class="sum-row"><span class="sum-key">Viáticos est.</span><span class="sum-val pending" id="s_vt">—</span></div>
           <div class="sum-row"><span class="sum-key">Flete</span><span class="sum-val pending" id="s_flete">—</span></div>
         </div>
-      </div>
+      </div
     </aside>
   </div>
 </div>
 
-<script>
+<script
 // ── STATE ────────────────────────────────────────────────────────────────────
 const S = {
   step:1, totalSteps:7,
@@ -970,12 +970,12 @@ function calcViaticos(){
   let dias_comida, noches_hotel, traslado_total, traslado_desc, avion=false, auto_dias=0;
 
   if(km<=200){
-    dias_comida=1;                     // solo 1 día de comidas
+    dias_comida=tanks;                  // 1 día de comida por tanque
     noches_hotel=tanks>=2?tanks:0;    // hotel solo si 2+ tanques
     traslado_total=km*VT.km_rate*2;
     traslado_desc=`${km} km × ${VT.km_rate}/km × 2 = $${traslado_total.toFixed(0)}`;
   } else if(km<=499){
-    dias_comida=2;                     // traslado + instalación
+    dias_comida=tanks+1;               // 1 día traslado + 1 día por tanque
     noches_hotel=tanks>=2?tanks:1;    // siempre al menos 1 noche
     traslado_total=km*VT.km_rate*2;
     traslado_desc=`${km} km × ${VT.km_rate}/km × 2 = $${traslado_total.toFixed(0)}`;
@@ -1153,10 +1153,54 @@ async function submitForm(){
     S._fletLink=`https://cajawater.github.io/cotizador/fletero.html#token=${fletToken}`;
     S._folio=proj.folio||folio;
     renderLinks();
+    // Enviar correos automáticos
+    await enviarCorreos(S._folio, S._instLink, S._fletLink);
   }catch(e){
     console.warn('Supabase save failed:',e.message);
     renderLinks(true);
   }
+}
+
+async function enviarCorreos(folio, instLink, fletLink) {
+  const cliente = (S.datos_cliente?.nombre) || 'Cliente';
+  const ciudad  = (S.datos_cliente?.ciudad) || '';
+
+  const EMAILJS_SERVICE  = 'service_o86gt7l';
+  const EMAILJS_USER     = 'h2K9tXOsDNesnK0R9';
+  const TEMPLATE_INST    = 'ji6ddae';
+  const TEMPLATE_FLET    = 'template_nh9hvif';
+
+  const sendEmail = async (templateId, params) => {
+    try {
+      const r = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          service_id: EMAILJS_SERVICE,
+          template_id: templateId,
+          user_id: EMAILJS_USER,
+          template_params: params
+        })
+      });
+      const txt = await r.text();
+      console.log('EmailJS:', templateId, r.status, txt);
+    } catch(e) {
+      console.warn('Error EmailJS:', templateId, e.message);
+    }
+  };
+
+  await sendEmail(TEMPLATE_INST, {
+    to_email: 'zulema@agrialtec.mx',
+    cc_email: 'erick@agrialtec.mx',
+    folio, cliente, ciudad,
+    link: instLink
+  });
+
+  await sendEmail(TEMPLATE_FLET, {
+    to_email: 'Transportes.colchado@hotmail.com',
+    folio, cliente, ciudad,
+    link: fletLink
+  });
 }
 
 function renderLinks(fallback){
