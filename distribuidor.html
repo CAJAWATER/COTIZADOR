@@ -894,7 +894,8 @@ let _selCity=null;
 function filterCities(q){
   const box=document.getElementById('city_suggestions');
   if(!q||q.length<2){box.style.display='none';return;}
-  const matches=CITIES.filter(c=>c.n.toLowerCase().includes(q.toLowerCase())).slice(0,10);
+  const norm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const matches=CITIES.filter(c=>norm(c.n).includes(norm(q))).slice(0,10);
   if(!matches.length){box.style.display='none';return;}
   box.innerHTML=matches.map(c=>
     `<button type="button" data-city="${c.n.replace(/"/g,'&quot;')}" data-km="${c.km}"
@@ -1081,7 +1082,7 @@ function set(id,val){
 // ── SUBMIT ────────────────────────────────────────────────────────────────────
 // ── SUPABASE DIRECTO ─────────────────────────────────────────────────────
 const SUPA_URL='https://dzuwsckiesjheulsabjo.supabase.co';
-const SUPA_KEY='sb_publishable_bwqq0ew4ALIG-_ALSdiSiw_mL7C6iWF';
+const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6dXdzY2tpZXNqaGV1bHNhYmpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4NjQzOTcsImV4cCI6MjEwNjQ0MDM5N30.-tBkv7xeyxdEFMvvI8bS2lK-vWrazl4xPaWaVUZed4k';
 async function supaFetch(path,method='GET',body=null){
   const opts={method,headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'}};
   if(body) opts.body=JSON.stringify(body);
@@ -1149,8 +1150,8 @@ async function submitForm(){
     const proj=Array.isArray(res)?res[0]:res;
     const instToken=proj.instalador_token;
     const fletToken=proj.fletero_token;
-    S._instLink=`https://cajawater.github.io/cotizador/instalador.html#token=${instToken}`;
-    S._fletLink=`https://cajawater.github.io/cotizador/fletero.html#token=${fletToken}`;
+    S._instLink=`https://cajawater.github.io/COTIZADOR/instalador.html#token=${instToken}`;
+    S._fletLink=`https://cajawater.github.io/COTIZADOR/fletero.html#token=${fletToken}`;
     S._folio=proj.folio||folio;
     renderLinks();
     // Enviar correos automáticos
@@ -1167,7 +1168,7 @@ async function enviarCorreos(folio, instLink, fletLink) {
 
   const EMAILJS_SERVICE  = 'service_o86gt7l';
   const EMAILJS_USER     = 'h2K9tXOsDNesnK0R9';
-  const TEMPLATE_INST    = 'ji6ddae';
+  const TEMPLATE_INST    = 'template_ji6ddae';
   const TEMPLATE_FLET    = 'template_nh9hvif';
 
   const sendEmail = async (templateId, params) => {
@@ -1303,6 +1304,7 @@ function showStockRec(m3){
   else if(rec.type==='up') txt.innerHTML='El tanque de stock más cercano hacia arriba es '+fmtTank(rec.t)+' (+'+rec.add.toFixed(0)+' m³). Considera este modelo para entrega inmediata.';
   else if(rec.type==='constrained') txt.innerHTML='Con limitante de diámetro ≤'+rec.diamMax+' m, el tanque más cercano disponible es '+fmtTank(rec.t)+(rec.add>0?' (+'+rec.add.toFixed(0)+' m³)':'')+'. ✅';
   else if(rec.type==='no_match_diam') txt.innerHTML='⚠️ Ningún tanque de stock cumple con la limitante de diámetro ≤'+rec.diamMax+' m. Se fabricará bajo pedido.';
+  else if(rec.type==='no_eligible_up') txt.innerHTML='⚠️ Las dimensiones del tanque no se ajustan a ningún modelo en stock con limitante de diámetro ≤'+rec.diamMax+' m. Propondremos la opción más viable para esa restricción de espacio.';
   else txt.innerHTML='Volumen mayor a '+STOCK_TANKS[STOCK_TANKS.length-1].m3+' m³. Se fabricará bajo pedido.';
 }
 
@@ -1334,8 +1336,19 @@ function getStockRec(m3){
   // Find exact match
   const exact=eligible.find(t=>t.m3===m3);
   if(exact) return {type:'exact',t:exact};
-  // Nearest above within constraint
+  // Nearest above and below within eligible tanks
   const up=eligible.find(t=>t.m3>m3);
+  const down=[...eligible].reverse().find(t=>t.m3<m3);
+  // If diamMax constraint and no eligible tank above requested volume → space constraint message
+  if(diamMax && !up){
+    const naturalUp=sorted.find(t=>t.m3>m3);
+    if(naturalUp) return {type:'no_eligible_up',diamMax};
+  }
+  // Threshold logic: ≤10% reduction to lower model → suggest lower (immediate delivery)
+  if(down){
+    const pct=(m3-down.m3)/m3*100;
+    if(pct<=10) return {type:'smaller',t:down,save:m3-down.m3,pct:pct.toFixed(0)};
+  }
   // If diamMax constraint excludes the natural next-up, highlight the constrained alternative
   if(diamMax && up){
     const naturalUp=sorted.find(t=>t.m3>m3);
