@@ -1124,6 +1124,7 @@ async function submitForm(){
     telefono:'',
     km_leon:S.dist_km||null
   };
+  const pesoCalc = calcPesoEmbarque(parseFloat(S.volumen_m3)||0, S.cubierta||'');
   const datos_tanque={
     m3:S.volumen_m3||null,
     diam_max:S.diam_max||null,
@@ -1131,7 +1132,8 @@ async function submitForm(){
     membrana:S.membrana||null,
     cubierta:S.cubierta||null,
     flanges_notas:S.flanges_notas||null,
-    servicio:S.servicio||null
+    servicio:S.servicio||null,
+    peso_kg:pesoCalc.kg||null
   };
   const payload={
     folio,
