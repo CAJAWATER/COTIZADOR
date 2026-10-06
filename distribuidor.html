@@ -1197,9 +1197,15 @@ async function enviarCorreos(folio, instLink, fletLink) {
     link: instLink
   });
 
+  const pesoInfo = calcPesoEmbarque(S.volumen_m3 || 0, S.cubierta || '');
+  const pesoStr = pesoInfo.estimado
+    ? `~${pesoInfo.kg.toLocaleString('es-MX')} kg (estimado)`
+    : `${pesoInfo.kg.toLocaleString('es-MX')} kg`;
+
   await sendEmail(TEMPLATE_FLET, {
     to_email: 'Transportes.colchado@hotmail.com',
     folio, cliente, ciudad,
+    peso_embarque: pesoStr,
     link: fletLink
   });
 }
@@ -1221,7 +1227,7 @@ function renderLinks(fallback){
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:#0D1B2A;margin-bottom:10px;">
       ✅ Folio: ${S._folio}
     </div>
-    <p style="color:#3D4D63;">Los links de acceso para el instalador y el fletero fueron enviados por correo electrónico. ✉️</p>
+    <p style="color:#3D4D63;">Se ha solicitado cotización de instalación y flete. ✉️</p>
     `;
 }
 
@@ -1311,21 +1317,34 @@ function showStockRec(m3){
 
 // Stock tanks with real SKU data
 const STOCK_TANKS=[
-  {sku:'S50',    m3:56,  diam:4.5,  h:3.5},
-  {sku:'S100',   m3:107, diam:5.5,  h:4.5},
-  {sku:'S150',   m3:173, diam:7,    h:4.5},
-  {sku:'S150LP', m3:176, diam:8,    h:3.5},
-  {sku:'S250',   m3:275, diam:10,   h:3.5},
-  {sku:'S250LP', m3:271, diam:12,   h:2.4},
-  {sku:'S350',   m3:353, diam:10,   h:4.5},
-  {sku:'S350LP', m3:369, diam:14,   h:2.4},
-  {sku:'S400',   m3:428, diam:11,   h:4.5},
-  {sku:'S500',   m3:509, diam:12,   h:4.5},
-  {sku:'S500LP', m3:539, diam:14,   h:3.5},
-  {sku:'S650LP', m3:704, diam:16,   h:3.5},
-  {sku:'S700LP', m3:794, diam:17,   h:3.5},
-  {sku:'S1100LP',m3:1145,diam:18,   h:4.5}
+  {sku:'S50',    m3:56,  diam:4.5,  h:3.5, wTanque:700,  wTecho:300,  wMembrana:50},
+  {sku:'S100',   m3:107, diam:5.5,  h:4.5, wTanque:1500, wTecho:400,  wMembrana:170},
+  {sku:'S150',   m3:173, diam:7,    h:4.5, wTanque:1800, wTecho:600,  wMembrana:240},
+  {sku:'S150LP', m3:176, diam:8,    h:3.5, wTanque:1600, wTecho:800,  wMembrana:250},
+  {sku:'S250',   m3:275, diam:10,   h:3.5, wTanque:2000, wTecho:1200, wMembrana:340},
+  {sku:'S250LP', m3:271, diam:12,   h:2.4, wTanque:1600, wTecho:1700, wMembrana:380},
+  {sku:'S350',   m3:353, diam:10,   h:4.5, wTanque:2600, wTecho:1200, wMembrana:390},
+  {sku:'S350LP', m3:369, diam:14,   h:2.4, wTanque:1800, wTecho:2300, wMembrana:480},
+  {sku:'S400',   m3:428, diam:11,   h:4.5, wTanque:2900, wTecho:1500, wMembrana:440},
+  {sku:'S500',   m3:509, diam:12,   h:4.5, wTanque:3100, wTecho:1700, wMembrana:500},
+  {sku:'S500LP', m3:539, diam:14,   h:3.5, wTanque:2700, wTecho:2300, wMembrana:560},
+  {sku:'S650LP', m3:704, diam:16,   h:3.5, wTanque:3500, wTecho:3000, wMembrana:680},
+  {sku:'S700LP', m3:794, diam:17,   h:3.5, wTanque:3700, wTecho:3500, wMembrana:750},
+  {sku:'S1100LP',m3:1145,diam:18,   h:4.5, wTanque:5300, wTecho:4500, wMembrana:900}
 ];
+
+// Calcula peso de embarque según SKU y tipo de cubierta
+function calcPesoEmbarque(m3, cubierta) {
+  const tank = STOCK_TANKS.find(t => t.m3 === m3);
+  if (tank) {
+    const conTecho = cubierta === 'acero_zma';
+    const total = tank.wTanque + tank.wMembrana + (conTecho ? tank.wTecho : 0);
+    return { kg: total, estimado: false, sku: tank.sku };
+  }
+  // Fuera de stock: prorrateo 7 kg/m³
+  const total = Math.round(m3 * 7);
+  return { kg: total, estimado: true, sku: null };
+}
 function getStockRec(m3){
   if(!m3||m3<=0) return null;
   const diamMax=parseFloat(document.getElementById('diam_max')?document.getElementById('diam_max').value:'')||null;
