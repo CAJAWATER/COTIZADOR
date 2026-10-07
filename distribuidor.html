@@ -1199,17 +1199,19 @@ async function enviarCorreos(folio, instLink, fletLink) {
     link: instLink
   });
 
-  const pesoInfo = calcPesoEmbarque(S.volumen_m3 || 0, S.cubierta || '');
-  const pesoStr = pesoInfo.estimado
-    ? `~${pesoInfo.kg.toLocaleString('es-MX')} kg (estimado)`
-    : `${pesoInfo.kg.toLocaleString('es-MX')} kg`;
+  if (S.flete === 'dedicado') {
+    const pesoInfo = calcPesoEmbarque(S.volumen_m3 || 0, S.cubierta || '');
+    const pesoStr = pesoInfo.estimado
+      ? `~${pesoInfo.kg.toLocaleString('es-MX')} kg (estimado)`
+      : `${pesoInfo.kg.toLocaleString('es-MX')} kg`;
 
-  await sendEmail(TEMPLATE_FLET, {
-    to_email: 'Transportes.colchado@hotmail.com',
-    folio, cliente, ciudad,
-    peso_embarque: pesoStr,
-    link: fletLink
-  });
+    await sendEmail(TEMPLATE_FLET, {
+      to_email: 'Transportes.colchado@hotmail.com',
+      folio, cliente, ciudad,
+      peso_embarque: pesoStr,
+      link: fletLink
+    });
+  }
 }
 
 function renderLinks(fallback){
