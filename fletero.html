@@ -246,22 +246,25 @@ async function cargarProyecto() {
     // Construir resumen de tanques para el fletero
     let tanquesResumen = '';
     if(tanques.length > 0){
-      // Agrupar por m3 para mostrar compacto
+      // Agrupar por m3+cubierta para mostrar compacto
       const grupos = {};
       tanques.forEach(t => {
-        const k = t.m3 + 'm³';
-        grupos[k] = (grupos[k]||0) + 1;
+        const key = (t.m3||'?') + '_' + (t.cubierta||'');
+        if(!grupos[key]) grupos[key] = {m3: t.m3, cubierta: t.cubierta, cantidad: 0, peso_kg: t.peso_kg_unitario||0};
+        grupos[key].cantidad++;
       });
-      tanquesResumen = Object.entries(grupos).map(([k,n])=>`${n}× ${k}`).join(', ');
-    } else if(dt.m3) {
+      tanquesResumen = Object.values(grupos).map(g =>
+        `${g.cantidad}× ${g.m3} m³${g.cubierta && g.cubierta!=='sin_cubierta' ? ' c/cubierta' : ''}`
+      ).join(' + ');
+    } else {
       // Legado: objeto simple
-      tanquesResumen = dt.m3 + ' m³';
+      tanquesResumen = dt.m3 ? dt.m3 + ' m³' : null;
     }
 
     document.getElementById('specs-embarque').innerHTML = [
       spec('Folio', proyecto.folio),
-      spec('Embarque', tanquesResumen || null),
-      spec('Total tanques', tanques.length > 0 ? tanques.length + ' piezas' : null),
+      spec('Tanques', tanquesResumen),
+      spec('Total piezas', tanques.length > 0 ? tanques.length + ' tanques' : null),
       spec('Peso total aprox.', pesoTotal ? (pesoTotal/1000).toFixed(1) + ' ton' : null),
       spec('Destino', (c.municipio || c.ubicacion || '') + (c.estado ? ', '+c.estado : ''))
     ].join('');
