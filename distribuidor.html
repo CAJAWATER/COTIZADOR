@@ -264,6 +264,7 @@ textarea{resize:vertical;min-height:72px;}
     <div class="prog-step" id="ps5"></div>
     <div class="prog-step" id="ps6"></div>
     <div class="prog-step" id="ps7"></div>
+    <div class="prog-step" id="ps8"></div>
   </div>
 
   <div class="layout">
@@ -295,62 +296,72 @@ textarea{resize:vertical;min-height:72px;}
         </div>
       </div>
 
-      <!-- ══ PASO 2: VOLUMEN ══ -->
+      <!-- ══ PASO 2: GRUPOS DE CAPACIDAD ══ -->
       <div class="step-card" id="step2" hidden>
         <div class="step-head">
           <div class="step-num">02</div>
-          <div><div class="step-title">Requerimiento de Almacenamiento</div><div class="step-sub">Volumen y restricciones físicas del sitio</div></div>
+          <div><div class="step-title">Requerimiento de Almacenamiento</div><div class="step-sub">Defina los grupos de capacidad para este proyecto</div></div>
         </div>
         <div class="step-body">
-          <div class="field">
-            <label>Volumen requerido <span class="req">*</span></label>
-            <div style="display:flex;gap:0;margin-bottom:8px;">
-              <button id="unit_m3" class="unit-btn active" onclick="setUnit('m3')">m³</button>
-              <button id="unit_lt" class="unit-btn" onclick="setUnit('lt')">Litros</button>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <input type="number" id="volumen_input" placeholder="Ej. 500" min="1" style="flex:1;" oninput="convertVol()">
-              <span id="vol_unit_label" style="font-size:13px;font-weight:600;color:var(--muted);min-width:30px;">m³</span>
-            </div>
-            <div class="hint" id="vol_hint"></div>
-            <div id="stock_rec" style="display:none;margin-top:8px;padding:10px 14px;background:var(--blue-tint,rgba(27,79,168,.08));border-left:3px solid #1B4FA8;border-radius:6px;font-size:13px;color:var(--fg);">
-              <strong style="color:#1B4FA8;">💡 Recomendación de stock:</strong> <span id="stock_rec_text"></span>
-            </div>
-            <input type="hidden" id="volumen_m3">
+          <!-- Info -->
+          <div class="info-box" style="margin-bottom:16px;">
+            <strong>🗂 Grupos de capacidad</strong>
+            Un grupo representa tanques del mismo tamaño. Puede agregar hasta 5 grupos distintos. Cada grupo se configurará individualmente (membrana, cubierta, descargas).
           </div>
-          <div class="field">
-            <label>¿Existe restricción de <strong>diámetro</strong> en el sitio?</label>
-            <div class="yn-group">
-              <button class="yn-btn" id="yn_diam_si" onclick="setYN('diam','si')">Sí, hay restricción</button>
-              <button class="yn-btn" id="yn_diam_no" onclick="setYN('diam','no')">Sin restricción</button>
+
+          <!-- Lista de grupos agregados -->
+          <div id="grupos_lista" style="margin-bottom:16px;"></div>
+
+          <!-- Formulario para agregar grupo -->
+          <div id="form_nuevo_grupo" style="background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px;">
+            <div style="font-size:13px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">➕ Agregar grupo de capacidad</div>
+            <div class="two-col">
+              <div class="field">
+                <label>Capacidad (m³) <span class="req">*</span></label>
+                <div style="display:flex;gap:0;margin-bottom:6px;">
+                  <button id="g_unit_m3" class="unit-btn active" onclick="setGrupoUnit('m3')">m³</button>
+                  <button id="g_unit_lt" class="unit-btn" onclick="setGrupoUnit('lt')">Litros</button>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <input type="number" id="g_volumen_input" placeholder="Ej. 500" min="1" style="flex:1;" oninput="onGrupoVolInput()">
+                  <span id="g_vol_unit" style="font-size:13px;font-weight:600;color:var(--muted);min-width:30px;">m³</span>
+                </div>
+                <div class="hint" id="g_vol_hint" style="min-height:16px;"></div>
+                <input type="hidden" id="g_volumen_m3">
+              </div>
+              <div class="field">
+                <label>Cantidad de tanques <span class="req">*</span></label>
+                <input type="number" id="g_cantidad" value="1" min="1" max="50" placeholder="1">
+                <div class="hint">Número de unidades de esta capacidad.</div>
+              </div>
+            </div>
+            <div id="g_stock_rec" style="display:none;margin-bottom:10px;padding:10px 14px;background:var(--blue-tint,rgba(27,79,168,.08));border-left:3px solid #1B4FA8;border-radius:6px;font-size:13px;color:var(--fg);">
+              <strong style="color:#1B4FA8;">💡 Recomendación de stock:</strong> <span id="g_stock_rec_text"></span>
+            </div>
+            <!-- Restricciones opcionales -->
+            <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 8px;">Restricciones físicas (opcionales)</div>
+            <div class="two-col">
+              <div class="field">
+                <label>Diámetro máximo (m)</label>
+                <input type="number" id="g_diam_max" placeholder="Sin restricción" step="0.5" min="1">
+              </div>
+              <div class="field">
+                <label>Altura máxima (m)</label>
+                <input type="number" id="g_alt_max" placeholder="Sin restricción" step="0.1" min="0.5">
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <button class="btn btn-primary" onclick="addGrupo()" style="padding:8px 20px;">Agregar grupo →</button>
             </div>
           </div>
-          <div id="diam_campo" hidden>
-            <div class="field">
-              <label for="diam_max">Diámetro máximo permitido (m)</label>
-              <input type="number" id="diam_max" placeholder="Ej. 4" step="0.5" min="1" oninput="const m3=parseFloat(document.getElementById('volumen_m3').value)||0;showStockRec(m3);updateSummary();">
-            </div>
-          </div>
-          <div class="field">
-            <label>¿Existe restricción de <strong>altura</strong>?</label>
-            <div class="yn-group">
-              <button class="yn-btn" id="yn_alt_si" onclick="setYN('alt','si')">Sí, hay restricción</button>
-              <button class="yn-btn" id="yn_alt_no" onclick="setYN('alt','no')">Sin restricción</button>
-            </div>
-          </div>
-          <div id="alt_campo" hidden>
-            <div class="field">
-              <label for="alt_max">Altura máxima permitida (m)</label>
-              <input type="number" id="alt_max" placeholder="Ej. 3.5" step="0.1" min="0.5">
-            </div>
-          </div>
-          <div class="info-box" style="margin-top:16px;">
+
+          <div class="info-box" style="margin-top:4px;">
             <strong>🪜 Incluido en todos los tanques CAJA</strong>
-            Cada tanque incluye <strong>escalera exterior e interior en acero galvanizado</strong>, para acceso seguro de mantenimiento.
+            Cada tanque incluye <strong>escalera exterior e interior en acero galvanizado</strong> para acceso seguro de mantenimiento.
           </div>
           <div class="nav-row">
             <button class="btn btn-ghost" onclick="goBack(2)">← Atrás</button>
-            <button class="btn btn-primary ml-auto" onclick="goNext(2)">Continuar →</button>
+            <button class="btn btn-primary ml-auto" onclick="goNext(2)" id="btn_paso2_next">Configurar tanques →</button>
           </div>
         </div>
       </div>
@@ -359,7 +370,10 @@ textarea{resize:vertical;min-height:72px;}
       <div class="step-card" id="step3" hidden>
         <div class="step-head">
           <div class="step-num">03</div>
-          <div><div class="step-title">Selección de Membrana</div><div class="step-sub">Tres preguntas para determinar la membrana correcta</div></div>
+          <div>
+            <div class="step-title">Selección de Membrana</div>
+            <div class="step-sub" id="step3_sub">Tres preguntas para determinar la membrana correcta</div>
+          </div>
         </div>
         <div class="step-body">
 
@@ -412,7 +426,10 @@ textarea{resize:vertical;min-height:72px;}
       <div class="step-card" id="step4" hidden>
         <div class="step-head">
           <div class="step-num">04</div>
-          <div><div class="step-title">Tipo de Cubierta</div><div class="step-sub">Seleccione la cubierta para el tanque</div></div>
+          <div>
+            <div class="step-title">Tipo de Cubierta</div>
+            <div class="step-sub" id="step4_sub">Seleccione la cubierta para el tanque</div>
+          </div>
         </div>
         <div class="step-body">
           <div class="option-grid">
@@ -458,7 +475,10 @@ textarea{resize:vertical;min-height:72px;}
       <div class="step-card" id="step5" hidden>
         <div class="step-head">
           <div class="step-num">05</div>
-          <div><div class="step-title">Descargas Estándar</div><div class="step-sub">Flanges y conexiones propuestas según capacidad</div></div>
+          <div>
+            <div class="step-title">Descargas Estándar</div>
+            <div class="step-sub" id="step5_sub">Flanges y conexiones propuestas según capacidad</div>
+          </div>
         </div>
         <div class="step-body">
           <div id="flanges_auto" class="info-box"></div>
@@ -492,10 +512,28 @@ textarea{resize:vertical;min-height:72px;}
         </div>
       </div>
 
-      <!-- ══ PASO 6: SERVICIOS Y FLETE ══ -->
+      <!-- ══ PASO 6: RESUMEN DE TANQUES ══ -->
       <div class="step-card" id="step6" hidden>
         <div class="step-head">
           <div class="step-num">06</div>
+          <div><div class="step-title">Resumen de Tanques</div><div class="step-sub">Revise la configuración de todos los tanques antes de continuar</div></div>
+        </div>
+        <div class="step-body">
+          <div id="resumen_tanques_tabla" style="overflow-x:auto;"></div>
+          <div style="margin-top:14px;text-align:right;">
+            <button class="btn btn-ghost btn-sm" onclick="editarGrupo()" style="font-size:12px;margin-right:8px;">✏️ Editar grupos</button>
+          </div>
+          <div class="nav-row">
+            <button class="btn btn-ghost" onclick="goBack(6)">← Atrás</button>
+            <button class="btn btn-primary ml-auto" onclick="goNext(6)">Continuar →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PASO 7: SERVICIOS Y FLETE ══ -->
+      <div class="step-card" id="step7" hidden>
+        <div class="step-head">
+          <div class="step-num">07</div>
           <div><div class="step-title">Servicios y Flete</div><div class="step-sub">Instalación, supervisión y logística</div></div>
         </div>
         <div class="step-body">
@@ -608,31 +646,37 @@ textarea{resize:vertical;min-height:72px;}
           </div>
 
           <div class="nav-row">
-            <button class="btn btn-ghost" onclick="goBack(6)">← Atrás</button>
-            <button class="btn btn-primary ml-auto" onclick="goNext(6)">Continuar →</button>
+            <button class="btn btn-ghost" onclick="goBack(7)">← Atrás</button>
+            <button class="btn btn-primary ml-auto" onclick="goNext(7)">Continuar →</button>
           </div>
         </div>
       </div>
 
-      <!-- ══ PASO 7: CONTACTO ══ -->
-      <div class="step-card" id="step7" hidden>
+      <!-- ══ PASO 8: SOLICITAR COTIZACIÓN ══ -->
+      <div class="step-card" id="step8" hidden>
         <div class="step-head">
-          <div class="step-num">07</div>
-          <div><div class="step-title">Envío de Cotización</div><div class="step-sub">La cotización se enviará por correo electrónico</div></div>
+          <div class="step-num">08</div>
+          <div><div class="step-title">Solicitar Cotización</div><div class="step-sub">CAJA preparará y enviará la cotización formal a su correo</div></div>
         </div>
         <div class="step-body">
+          <!-- Mini-resumen del pedido -->
+          <div id="pedido_resumen_mini" style="background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:14px;margin-bottom:18px;font-size:13px;"></div>
           <div class="field">
-            <label for="email_dest">Correo electrónico <span class="req">*</span></label>
+            <label for="email_dest">Correo electrónico del destinatario <span class="req">*</span></label>
             <input type="email" id="email_dest" placeholder="correo@empresa.com">
-            <div class="hint">La cotización formal se enviará a esta dirección.</div>
+            <div class="hint">CAJA enviará la cotización formal (productos + flete + instalación) a esta dirección.</div>
           </div>
           <div class="field">
-            <label for="notas_adicionales">Notas o comentarios adicionales</label>
-            <textarea id="notas_adicionales" placeholder="Cualquier detalle adicional que deba considerarse..."></textarea>
+            <label for="notas_adicionales">Comentarios adicionales (opcional)</label>
+            <textarea id="notas_adicionales" placeholder="Cualquier detalle que deba considerarse en la cotización..."></textarea>
+          </div>
+          <div class="info-box" style="margin-bottom:4px;">
+            <strong>ℹ️ ¿Qué pasa después?</strong>
+            Al enviar esta solicitud, el equipo de CAJA recibirá todos los datos del proyecto y preparará una cotización formal con precios reales de productos, flete e instalación. La recibirá por correo en breve.
           </div>
           <div class="nav-row">
-            <button class="btn btn-ghost" onclick="goBack(7)">← Atrás</button>
-            <button class="btn btn-success ml-auto" onclick="submitForm()">✓ Enviar solicitud</button>
+            <button class="btn btn-ghost" onclick="goBack(8)">← Atrás</button>
+            <button class="btn btn-success ml-auto" onclick="submitForm()">✉️ Solicitar Cotización</button>
           </div>
         </div>
       </div>
@@ -682,8 +726,12 @@ textarea{resize:vertical;min-height:72px;}
 <script>
 // ── STATE ────────────────────────────────────────────────────────────────────
 const S = {
-  step:1, totalSteps:7,
+  step:1, totalSteps:8,
   ref_proyecto:'', nombre_dist:'', contacto_dist:'',
+  // Multi-tanque
+  grupos:[],            // [{m3,cantidad,diam_max,alt_max,membrana,cubierta,flanges_custom,flanges_notas,flanges_desc,m1,m2,m3q}]
+  grupoActual:0,        // índice del grupo en configuración (pasos 3-5)
+  // Legacy (se usa para compat con pasos 3-5 que leen S.volumen_m3 etc)
   volumen_m3:'', diam_rest:null, diam_max:'', alt_rest:null, alt_max:'',
   m1:null, m2:null, m3:null, membrana:'',
   cubierta:'', flanges_custom:null, flanges_notas:'',
@@ -702,9 +750,32 @@ const VT = {
 function goNext(from){
   if(!validateStep(from)) return;
   collectStep(from);
+  // Paso 5: al terminar descargas del grupo actual, guardar y ver si hay más
+  if(from===5){
+    guardarGrupoActual();
+    S.grupoActual++;
+    if(S.grupoActual < S.grupos.length){
+      // Cargar siguiente grupo en los campos de pasos 3-5
+      cargarGrupoEnForm(S.grupoActual);
+      showStep(3); // volver a membrana para el siguiente grupo
+      return;
+    } else {
+      showStep(6); // todos configurados → resumen
+      return;
+    }
+  }
   showStep(from+1);
 }
-function goBack(from){ showStep(from-1); }
+function goBack(from){
+  // En paso 3 y hay grupos previos configurados, regresar al paso 5 con el grupo anterior
+  if(from===3 && S.grupoActual>0){
+    S.grupoActual--;
+    cargarGrupoEnForm(S.grupoActual);
+    showStep(5);
+    return;
+  }
+  showStep(from-1);
+}
 function showStep(n){
   for(let i=1;i<=S.totalSteps;i++){
     const el=document.getElementById('step'+i);
@@ -715,6 +786,10 @@ function showStep(n){
   window.scrollTo({top:0,behavior:'smooth'});
   if(n===5) renderFlanges();
   if(n===4) setTimeout(updateTechoDiagram,50);
+  if(n===3) renderStepGrupoHeader();
+  if(n===4) renderStepGrupoHeader();
+  if(n===5) renderStepGrupoHeader();
+  if(n===6) renderResumenTanques();
 }
 function updateProgress(){
   for(let i=1;i<=S.totalSteps;i++){
@@ -732,15 +807,17 @@ function validateStep(n){
     if(!v('contacto_dist').trim()){flash('contacto_dist');return false;}
   }
   if(n===2){
-    convertVol();
-    if(!document.getElementById('volumen_m3').value){flash('volumen_input');return false;}
+    // Validar que haya al menos un grupo de capacidad
+    if(S.grupos.length===0){
+      alert('Agregue al menos un grupo de capacidad para continuar.');return false;
+    }
   }
   if(n===4){
     if(!document.querySelector('input[name=cubierta]:checked')){
       alert('Seleccione el tipo de cubierta para continuar.');return false;
     }
   }
-  if(n===7){
+  if(n===8){
     const em=v('email_dest').trim();
     if(!em||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)){flash('email_dest');return false;}
   }
@@ -757,9 +834,9 @@ function flash(id){
 // ── COLLECT ──────────────────────────────────────────────────────────────────
 function collectStep(n){
   if(n===1){ S.ref_proyecto=v('ref_proyecto').trim(); S.nombre_dist=v('nombre_dist').trim(); S.contacto_dist=v('contacto_dist').trim(); }
-  if(n===2){ S.volumen_m3=v('volumen_m3'); S.diam_max=v('diam_max'); S.alt_max=v('alt_max'); }
-  if(n===6){ S.ubicacion=v('ubicacion_proy').trim(); S.dist_km=v('dist_km'); S.num_tanques=parseInt(v('num_tanques'))||1; S.paq_oficina=v('oficina_paq').trim(); S.flete_dir=v('flete_dir').trim(); }
-  if(n===7){ S.email=v('email_dest').trim(); S.notas=v('notas_adicionales').trim(); }
+  if(n===2){ /* grupos ya se manejan en addGrupo/removeGrupo */ }
+  if(n===7){ S.ubicacion=v('ubicacion_proy').trim(); S.dist_km=v('dist_km'); S.num_tanques=parseInt(v('num_tanques'))||1; S.paq_oficina=v('oficina_paq').trim(); S.flete_dir=v('flete_dir').trim(); }
+  if(n===8){ S.email=v('email_dest').trim(); S.notas=v('notas_adicionales').trim(); }
 }
 
 // ── Y/N ──────────────────────────────────────────────────────────────────────
@@ -1047,8 +1124,15 @@ function calcViaticos(){
 function updateSummary(){
   set('s_proyecto',S.ref_proyecto||v('ref_proyecto'));
   set('s_dist',S.nombre_dist||v('nombre_dist'));
-  const vol=v('volumen_m3')||S.volumen_m3;
-  set('s_vol',vol?vol+' m³':null);
+  // Multi-tanque: mostrar grupos si existen
+  if(S.grupos&&S.grupos.length>0){
+    const total=S.grupos.reduce((a,g)=>a+g.cantidad,0);
+    const cap=S.grupos.map(g=>`${g.cantidad}×${g.m3}m³`).join(', ');
+    set('s_vol',`${total} tanque(s): ${cap}`);
+  } else {
+    const vol=v('volumen_m3')||S.volumen_m3;
+    set('s_vol',vol?vol+' m³':null);
+  }
   let rest=[];
   if(S.diam_rest==='si'&&(v('diam_max')||S.diam_max)) rest.push('Ø max '+(v('diam_max')||S.diam_max)+' m');
   if(S.alt_rest==='si'&&(v('alt_max')||S.alt_max)) rest.push('Alt max '+(v('alt_max')||S.alt_max)+' m');
@@ -1091,15 +1175,24 @@ async function supaFetch(path,method='GET',body=null){
   const txt=await r.text();
   return txt?JSON.parse(txt):null;
 }
-function genFolio(){
-  const d=new Date(),yr=d.getFullYear().toString().slice(-2),mo=String(d.getMonth()+1).padStart(2,'0');
-  const rand=Math.random().toString(36).slice(2,6).toUpperCase();
-  return `CAJA-${yr}${mo}-${rand}`;
+async function genFolio(){
+  const yr=new Date().getFullYear().toString().slice(-2);
+  const prefix=`CWT-${yr}-`;
+  try{
+    // Buscar el último folio del año actual
+    const res=await supaFetch(`proyectos_instalacion?folio=like.${encodeURIComponent('CWT-'+yr+'-%')}&select=folio&order=folio.desc&limit=1`);
+    if(res&&res.length>0){
+      const last=res[0].folio; // 'CWT-26-0012'
+      const num=parseInt(last.split('-')[2]||'0',10)||0;
+      return prefix+String(num+1).padStart(4,'0');
+    }
+  }catch(e){ console.warn('genFolio query failed:',e.message); }
+  return prefix+'0001';
 }
 
 async function submitForm(){
-  if(!validateStep(7)) return;
-  collectStep(7); collectStep(6);
+  if(!validateStep(8)) return;
+  collectStep(8); collectStep(7);
   const cubSel=document.querySelector('input[name=cubierta]:checked');
   if(cubSel) S.cubierta=cubSel.value;
   const servSel=document.querySelector('input[name=servicio]:checked');
@@ -1113,8 +1206,9 @@ async function submitForm(){
   renderDone();
   for(let i=1;i<=S.totalSteps;i++){const el=document.getElementById('ps'+i);if(el)el.className='prog-step done';}
 
+
   // Save to Supabase
-  const folio=genFolio();
+  const folio=await genFolio();
   S._folio=folio;
   const datos_cliente={
     nombre:S.contacto_dist||S.nombre_dist,
@@ -1124,17 +1218,26 @@ async function submitForm(){
     telefono:'',
     km_leon:S.dist_km||null
   };
-  const pesoCalc = calcPesoEmbarque(parseFloat(S.volumen_m3)||0, S.cubierta||'');
-  const datos_tanque={
-    m3:S.volumen_m3||null,
-    diam_max:S.diam_max||null,
-    alt_max:S.alt_max||null,
-    membrana:S.membrana||null,
-    cubierta:S.cubierta||null,
-    flanges_notas:S.flanges_notas||null,
-    servicio:S.servicio||null,
-    peso_kg:pesoCalc.kg||null
-  };
+  // Construir array de tanques a partir de grupos
+  let peso_total_kg=0;
+  const tanquesArr=S.grupos.flatMap(g=>{
+    const n=parseInt(g.cantidad)||1;
+    const pc=calcPesoEmbarque(parseFloat(g.m3)||0, g.cubierta||'');
+    peso_total_kg+=pc.kg*n;
+    const t={
+      m3:g.m3||null, cantidad:n,
+      diam_max:g.diam_max||null, alt_max:g.alt_max||null,
+      membrana:g.membrana||null, cubierta:g.cubierta||null,
+      flanges_notas:g.flanges_notas||null,
+      peso_kg_unitario:pc.kg||null
+    };
+    return Array(n).fill(null).map(()=>({...t}));
+  });
+  const datos_tanque={tanques:tanquesArr, peso_total_kg};
+  // Compat legacy para enviarCorreos
+  S.cubierta=S.grupos[0]?.cubierta||'';
+  S.volumen_m3=S.grupos[0]?.m3||'';
+  const pesoCalc={kg:peso_total_kg, estimado:true};
   const payload={
     folio,
     distribuidor_nombre:S.nombre_dist,
@@ -1236,30 +1339,37 @@ function renderLinks(fallback){
 }
 
 function renderDone(){
-  const ml={pvc:'PVC Reforzada 1,500 g/m²',pvc_mec:'PVC Reforzada 1,500 g/m² (resistencia mecánica/espesor)',fpe:'fPE 0.8 mm (resistencia química)',ldpe:'fPE 0.8 mm (eficiente en costo)'};
+  const ml={pvc:'PVC Reforzada 1,500 g/m²',pvc_mec:'PVC Ref. 1,500 g/m² (mecánica)',fpe:'fPE 0.8 mm (resist. química)',fpe_eco:'fPE eco 0.8 mm',ldpe:'fPE eco 0.8 mm'};
   const cl={malla:'Malla PP 99% Sombra',acero_zma:'Cubierta Acero ZMA 1mm',sin_cubierta:'Sin cubierta'};
   const sl={instalacion:'Instalación completa',supervision:'Solo supervisión membrana',sin_servicio:'Sin servicio'};
+  const totalTanques=S.grupos.reduce((a,g)=>a+g.cantidad,0);
+  // Filas por grupo
+  let grupoRows=[];
+  S.grupos.forEach((g,i)=>{
+    grupoRows.push([`Grupo ${i+1}`,`${g.cantidad}× ${g.m3} m³`]);
+    grupoRows.push([`  Membrana`,ml[g.membrana]||'—']);
+    grupoRows.push([`  Cubierta`,cl[g.cubierta]||'—']);
+    grupoRows.push([`  Descargas`,g.flanges_custom?'Personalizada':'Estándar '+(g.flanges_desc||'')]);
+    if(g.diam_max) grupoRows.push([`  Diam. máx`,g.diam_max+' m']);
+    if(g.alt_max) grupoRows.push([`  Alt. máx`,g.alt_max+' m']);
+  });
   const rows=[
     ['Referencia',S.ref_proyecto],
     ['Distribuidor',S.nombre_dist],
     ['Contacto',S.contacto_dist],
-    ['Volumen solicitado',S.volumen_m3+' m³'],
-    ['Restricción diámetro',S.diam_rest==='si'?'Máx. '+S.diam_max+' m':'Sin restricción'],
-    ['Restricción altura',S.alt_rest==='si'?'Máx. '+S.alt_max+' m':'Sin restricción'],
-    ['Membrana',ml[S.membrana]||'—'],
-    ['Cubierta',cl[S.cubierta]||'—'],
-    ['Descargas',S.flanges_custom?S.flanges_notas||'Personalizada':'Estándar '+(S.flanges_desc||'')],
+    ['Total tanques',totalTanques+' tanques'],
+    ...grupoRows,
     ['Servicio',sl[S.servicio]||'—'],
     ['Ubicación',S.ubicacion||'—'],
     S.viaticos?['Viáticos estimados','$'+S.viaticos.total.toFixed(0)+' MXN']:null,
     ['Flete',S.flete==='dedicado'?'Dedicado – '+(S.flete_dir||'por definir'):S.flete==='paqueteria'?'Paquetería – '+(S.paq_oficina||'por definir'):'—'],
     ['Correo',S.email],
-    ['Notas',S.notas||'—'],
+    ['Comentarios',S.notas||'—'],
   ].filter(Boolean);
   const tbl=document.getElementById('doneTable');
-  tbl.innerHTML='<tr><th>Campo</th><th>Dato capturado</th></tr>'+rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
-  document.getElementById('doneTitle').textContent='Solicitud: '+S.ref_proyecto;
-  document.getElementById('doneSub').textContent='Capturado para '+S.nombre_dist+'. La cotización se enviará a '+S.email+'.';
+  tbl.innerHTML='<tr><th>Campo</th><th>Dato</th></tr>'+rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+  document.getElementById('doneTitle').textContent='Solicitud enviada: '+S.ref_proyecto;
+  document.getElementById('doneSub').textContent='CAJA preparará la cotización para '+S.nombre_dist+' y la enviará a '+S.email+'.';
 }
 
 function copyResumen(){
@@ -1281,6 +1391,201 @@ function copyResumen(){
 }
 
 function resetForm(){ location.reload(); }
+
+// ── MÓDULO MULTI-TANQUE ──────────────────────────────────────────────────────
+let _grupoUnit='m3';
+function setGrupoUnit(u){
+  _grupoUnit=u;
+  document.getElementById('g_unit_m3').className='unit-btn'+(u==='m3'?' active':'');
+  document.getElementById('g_unit_lt').className='unit-btn'+(u==='lt'?' active':'');
+  document.getElementById('g_vol_unit').textContent=u==='m3'?'m³':'L';
+  onGrupoVolInput();
+}
+function onGrupoVolInput(){
+  const raw=parseFloat(document.getElementById('g_volumen_input').value)||0;
+  let m3=_grupoUnit==='lt'?raw/1000:raw;
+  document.getElementById('g_volumen_m3').value=m3||'';
+  const hint=document.getElementById('g_vol_hint');
+  if(_grupoUnit==='lt'&&raw>0) hint.textContent=`= ${m3.toLocaleString('es-MX',{maximumFractionDigits:2})} m³`;
+  else hint.textContent='';
+  // Recomendación de stock
+  const SKUS=[{m3:56,sku:'S50'},{m3:107,sku:'S100'},{m3:173,sku:'S150'},{m3:176,sku:'S150LP'},{m3:275,sku:'S250'},{m3:271,sku:'S250LP'},{m3:353,sku:'S350'}];
+  const rec=document.getElementById('g_stock_rec');
+  if(m3>0){
+    const exact=SKUS.find(s=>Math.abs(s.m3-m3)<2);
+    if(exact){rec.style.display='block';document.getElementById('g_stock_rec_text').textContent=`${exact.sku} (${exact.m3} m³) — tanque estándar de inventario.`;}
+    else{rec.style.display='block';document.getElementById('g_stock_rec_text').textContent=`${m3} m³ — capacidad especial (fabricación bajo pedido).`;}
+  }else{rec.style.display='none';}
+}
+
+function addGrupo(){
+  const m3=parseFloat(document.getElementById('g_volumen_m3').value);
+  const cant=parseInt(document.getElementById('g_cantidad').value)||1;
+  if(!m3||m3<=0){flash('g_volumen_input');alert('Ingrese una capacidad válida.');return;}
+  if(S.grupos.length>=5){alert('Máximo 5 grupos de capacidad por pedido.');return;}
+  const g={
+    m3:m3, cantidad:cant,
+    diam_max:document.getElementById('g_diam_max').value||null,
+    alt_max:document.getElementById('g_alt_max').value||null,
+    // Configuración de pasos 3-5 (se llenarán al configurar)
+    membrana:'', cubierta:'', flanges_custom:null, flanges_notas:'', flanges_desc:'',
+    m1:null, m2:null, m3q:null
+  };
+  S.grupos.push(g);
+  // Limpiar formulario
+  document.getElementById('g_volumen_input').value='';
+  document.getElementById('g_volumen_m3').value='';
+  document.getElementById('g_cantidad').value='1';
+  document.getElementById('g_diam_max').value='';
+  document.getElementById('g_alt_max').value='';
+  document.getElementById('g_stock_rec').style.display='none';
+  renderGruposLista();
+  updateSummary();
+}
+
+function removeGrupo(i){
+  S.grupos.splice(i,1);
+  // Reajustar índice actual si es necesario
+  if(S.grupoActual>=S.grupos.length) S.grupoActual=Math.max(0,S.grupos.length-1);
+  renderGruposLista();
+  updateSummary();
+}
+
+function renderGruposLista(){
+  const cont=document.getElementById('grupos_lista');
+  if(!cont) return;
+  const SKUS=[{m3:56,sku:'S50'},{m3:107,sku:'S100'},{m3:173,sku:'S150'},{m3:176,sku:'S150LP'},{m3:275,sku:'S250'},{m3:271,sku:'S250LP'},{m3:353,sku:'S350'}];
+  if(S.grupos.length===0){cont.innerHTML='<div style="color:var(--muted);font-size:13px;padding:10px 0;">No hay grupos agregados aún.</div>';return;}
+  let html='<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Grupos agregados</div>';
+  html+='<div style="display:flex;flex-direction:column;gap:8px;">';
+  S.grupos.forEach((g,i)=>{
+    const exact=SKUS.find(s=>Math.abs(s.m3-g.m3)<2);
+    const skuTag=exact?`<span style="font-size:11px;background:#E8EFFE;color:#1B4FA8;padding:2px 7px;border-radius:4px;font-weight:700;">${exact.sku}</span>`:'<span style="font-size:11px;background:#FFF3E0;color:#7A4F00;padding:2px 7px;border-radius:4px;">Especial</span>';
+    const conf=g.membrana?'<span style="color:#1C7D4A;font-size:11px;">✓ Configurado</span>':'<span style="color:var(--muted);font-size:11px;">Pendiente</span>';
+    html+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;">
+      <div style="flex:1;">
+        <div style="font-weight:600;font-size:14px;">${g.cantidad} × ${g.m3} m³ ${skuTag}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">
+          ${g.diam_max?'Ø máx '+g.diam_max+'m · ':''}${g.alt_max?'Alt máx '+g.alt_max+'m · ':''}${conf}
+        </div>
+      </div>
+      <button onclick="removeGrupo(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:4px;">🗑</button>
+    </div>`;
+  });
+  html+='</div>';
+  cont.innerHTML=html;
+  // Mostrar/ocultar botón agregar si ya hay 5
+  const formAdd=document.getElementById('form_nuevo_grupo');
+  if(formAdd) formAdd.style.display=S.grupos.length>=5?'none':'block';
+  const btnNext=document.getElementById('btn_paso2_next');
+  if(btnNext) btnNext.textContent=`Configurar ${S.grupos.reduce((a,g)=>a+g.cantidad,0)} tanque(s) →`;
+}
+
+function guardarGrupoActual(){
+  if(S.grupoActual>=S.grupos.length) return;
+  const g=S.grupos[S.grupoActual];
+  g.membrana=S.membrana||'';
+  g.cubierta=S.cubierta||'';
+  g.flanges_custom=S.flanges_custom;
+  g.flanges_notas=S.flanges_notas||'';
+  g.flanges_desc=S.flanges_desc||'';
+  g.m1=S.m1; g.m2=S.m2; g.m3q=S.m3;
+}
+
+function cargarGrupoEnForm(idx){
+  if(idx>=S.grupos.length) return;
+  const g=S.grupos[idx];
+  // Cargar en S para que los pasos 3-5 funcionen
+  S.volumen_m3=g.m3;
+  S.diam_max=g.diam_max||'';
+  S.alt_max=g.alt_max||'';
+  S.diam_rest=g.diam_max?'si':'no';
+  S.alt_rest=g.alt_max?'si':'no';
+  // Reset membrana
+  S.membrana=g.membrana||'';
+  S.m1=g.m1; S.m2=g.m2; S.m3=g.m3q;
+  S.cubierta=g.cubierta||'';
+  S.flanges_custom=g.flanges_custom;
+  S.flanges_notas=g.flanges_notas||'';
+  S.flanges_desc=g.flanges_desc||'';
+  // Reset UI del árbol de membrana
+  ['yn_m1_si','yn_m1_no','yn_m2_si','yn_m2_no','yn_m3_costo','yn_m3_app'].forEach(id=>{const el=document.getElementById(id);if(el)el.className='yn-btn';});
+  const mq2=document.getElementById('mq2');if(mq2)mq2.hidden=true;
+  const mq3=document.getElementById('mq3');if(mq3)mq3.hidden=true;
+  const mr=document.getElementById('membrana_result');if(mr)mr.hidden=true;
+  const btnS3=document.getElementById('btnS3');if(btnS3)btnS3.disabled=!g.membrana;
+  // Si ya tiene membrana, restaurar resultado
+  if(g.membrana) setMembrana(g.membrana);
+  // Reset cubierta
+  document.querySelectorAll('input[name=cubierta]').forEach(r=>{r.checked=r.value===g.cubierta;});
+  setTimeout(updateTechoDiagram,50);
+}
+
+function renderStepGrupoHeader(){
+  const total=S.grupos.length;
+  const idx=S.grupoActual;
+  if(idx>=total) return;
+  const g=S.grupos[idx];
+  const SKUS=[{m3:56,sku:'S50'},{m3:107,sku:'S100'},{m3:173,sku:'S150'},{m3:176,sku:'S150LP'},{m3:275,sku:'S250'},{m3:271,sku:'S250LP'},{m3:353,sku:'S350'}];
+  const exact=SKUS.find(s=>Math.abs(s.m3-g.m3)<2);
+  const label=`Grupo ${idx+1} de ${total}: ${g.cantidad}× ${g.m3} m³${exact?' ('+exact.sku+')':''}`;
+  ['step3_sub','step4_sub','step5_sub'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.textContent=label;
+  });
+}
+
+function renderResumenTanques(){
+  const cont=document.getElementById('resumen_tanques_tabla');
+  if(!cont) return;
+  const ml={pvc:'PVC Ref. 1,500 g/m²',pvc_mec:'PVC Ref. (mec)',fpe:'fPE 0.8 mm',ldpe:'fPE eco 0.8 mm',fpe_eco:'fPE eco 0.8 mm'};
+  const cl={malla:'Malla PP',acero_zma:'Acero ZMA',sin_cubierta:'Sin cubierta'};
+  let html='<table class="summary-table" style="width:100%;font-size:13px;"><tr><th>#</th><th>Capacidad</th><th>Cant.</th><th>Membrana</th><th>Cubierta</th><th>Descargas</th></tr>';
+  S.grupos.forEach((g,i)=>{
+    html+=`<tr>
+      <td>${i+1}</td>
+      <td>${g.m3} m³</td>
+      <td>${g.cantidad}</td>
+      <td>${ml[g.membrana]||g.membrana||'—'}</td>
+      <td>${cl[g.cubierta]||g.cubierta||'—'}</td>
+      <td>${g.flanges_custom?'Personalizada':(g.flanges_desc||'Estándar')}</td>
+    </tr>`;
+  });
+  const total=S.grupos.reduce((a,g)=>a+g.cantidad,0);
+  html+=`<tr style="font-weight:700;background:var(--bg);"><td colspan="2">Total</td><td>${total}</td><td colspan="3"></td></tr>`;
+  html+='</table>';
+  cont.innerHTML=html;
+  // También renderizar el mini-resumen en paso 8
+  renderPedidoResumenMini();
+}
+
+function renderPedidoResumenMini(){
+  const el=document.getElementById('pedido_resumen_mini');
+  if(!el) return;
+  const total=S.grupos.reduce((a,g)=>a+g.cantidad,0);
+  const ml={pvc:'PVC Ref. 1,500 g/m²',pvc_mec:'PVC Ref.',fpe:'fPE 0.8 mm',ldpe:'fPE eco 0.8 mm',fpe_eco:'fPE eco 0.8 mm'};
+  const cl={malla:'Malla PP',acero_zma:'Acero ZMA',sin_cubierta:'Sin cubierta'};
+  let lines=S.grupos.map((g,i)=>`<div>• ${g.cantidad}× ${g.m3} m³ — ${ml[g.membrana]||'—'} / ${cl[g.cubierta]||'—'}</div>`).join('');
+  el.innerHTML=`<div style="font-weight:700;margin-bottom:6px;color:var(--blue);">📋 Pedido: ${total} tanque(s)</div>${lines}
+    <div style="margin-top:8px;color:var(--muted);font-size:12px;">Proyecto: <strong style="color:var(--fg);">${S.ref_proyecto||'—'}</strong> · Distribuidor: <strong style="color:var(--fg);">${S.nombre_dist||'—'}</strong></div>`;
+}
+
+function editarGrupo(){
+  // Regresar al paso 2 para editar grupos
+  S.grupoActual=0;
+  showStep(2);
+}
+
+// ── ACTUALIZAR SUMMARY SIDEBAR para multi-tanque ─────────────────────────────
+function updateSummaryMulti(){
+  const sVol=document.getElementById('s_vol');
+  if(sVol&&S.grupos.length>0){
+    const total=S.grupos.reduce((a,g)=>a+g.cantidad,0);
+    const cap=S.grupos.map(g=>`${g.cantidad}×${g.m3}m³`).join(', ');
+    sVol.textContent=`${total} tanque(s): ${cap}`;
+    sVol.classList.remove('pending');
+  }
+}
 
 // ── UNIDAD VOLUMEN ───────────────────────────────────────────────────────────
 let _volUnit='m3';
