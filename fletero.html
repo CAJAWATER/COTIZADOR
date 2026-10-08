@@ -234,18 +234,35 @@ async function cargarProyecto() {
     }
 
     const c = proyecto.datos_cliente || {};
-    const t = proyecto.datos_tanque || {};
+    const dt = proyecto.datos_tanque || {};
+    // Soporte nuevo formato {tanques:[...], peso_total_kg:N} y legado objeto simple
+    const tanques = Array.isArray(dt.tanques) ? dt.tanques : [];
+    const pesoTotal = dt.peso_total_kg || dt.peso_kg || null;
 
     document.getElementById('ruta-origen').textContent = 'León, Guanajuato (Planta CAJA)';
     document.getElementById('ruta-destino').textContent = (c.municipio || c.ubicacion || '—') + (c.estado ? ', ' + c.estado : '');
     if(c.km_leon) document.getElementById('ruta-km').textContent = '📍 ' + c.km_leon + ' km desde León, Gto.';
 
+    // Construir resumen de tanques para el fletero
+    let tanquesResumen = '';
+    if(tanques.length > 0){
+      // Agrupar por m3 para mostrar compacto
+      const grupos = {};
+      tanques.forEach(t => {
+        const k = t.m3 + 'm³';
+        grupos[k] = (grupos[k]||0) + 1;
+      });
+      tanquesResumen = Object.entries(grupos).map(([k,n])=>`${n}× ${k}`).join(', ');
+    } else if(dt.m3) {
+      // Legado: objeto simple
+      tanquesResumen = dt.m3 + ' m³';
+    }
+
     document.getElementById('specs-embarque').innerHTML = [
       spec('Folio', proyecto.folio),
-      spec('Modelo tanque', t.sku || t.modelo),
-      spec('Capacidad', t.m3 ? t.m3 + ' m³' : null),
-      spec('Diámetro', t.diam ? t.diam + ' m' : null),
-      spec('Peso aprox.', t.peso_kg ? (t.peso_kg/1000).toFixed(1) + ' ton' : null),
+      spec('Embarque', tanquesResumen || null),
+      spec('Total tanques', tanques.length > 0 ? tanques.length + ' piezas' : null),
+      spec('Peso total aprox.', pesoTotal ? (pesoTotal/1000).toFixed(1) + ' ton' : null),
       spec('Destino', (c.municipio || c.ubicacion || '') + (c.estado ? ', '+c.estado : ''))
     ].join('');
 
