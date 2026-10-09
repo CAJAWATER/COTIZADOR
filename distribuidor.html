@@ -625,6 +625,9 @@ textarea{resize:vertical;min-height:72px;}
             </div>
           </div>
 
+          <!-- Aviso restricción paquetería -->
+          <div id="warn_paqueteria" hidden style="background:#FFF3CD;border-left:4px solid #C0272D;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:12px;font-size:13px;color:#5C2A00;"></div>
+
           <!-- Flete dedicado: dirección + enlace Maps -->
           <div id="sec_flete_dedicado" hidden>
             <div class="map-box">
@@ -742,7 +745,7 @@ const S = {
 
 // ── VIÁTICOS CONFIG ──────────────────────────────────────────────────────────
 const VT = {
-  km_rate:4.70, comida_dia:750, hotel_noche:1500,
+  km_rate:6.20, comida_dia:750, hotel_noche:1500,
   vuelo_ida:700, auto_renta_dia:950
 };
 
@@ -790,6 +793,12 @@ function showStep(n){
   if(n===4) renderStepGrupoHeader();
   if(n===5) renderStepGrupoHeader();
   if(n===6) renderResumenTanques();
+  if(n===7){
+    // Precargar total de tanques desde grupos ya definidos
+    const totalTanques=S.grupos.reduce((a,g)=>a+(g.cantidad||1),0);
+    const el=document.getElementById('num_tanques');
+    if(el&&totalTanques>0){ el.value=totalTanques; calcViaticos(); }
+  }
 }
 function updateProgress(){
   for(let i=1;i<=S.totalSteps;i++){
@@ -922,9 +931,13 @@ function setMembrana(type){
 
 // ── FLANGES ───────────────────────────────────────────────────────────────────
 function renderFlanges(){
-  const vol=parseFloat(S.volumen_m3)||0;
+  // En flujo multi-grupo, leer m3 del grupo actual; fallback a S.volumen_m3 (flujo legado)
+  const g=S.grupos&&S.grupos[S.grupoActual];
+  const vol=parseFloat((g&&g.m3)||S.volumen_m3)||0;
   const desc=vol>=500?'6"':'4"';
   S.flanges_desc=desc;
+  // También guardar en el grupo actual si aplica
+  if(g) g.flanges_desc=desc;
   document.getElementById('flanges_auto').innerHTML=`
     <strong>📐 Propuesta estándar — ${vol>0?vol+' m³':'volumen indicado'}</strong>
     Descarga principal: <strong>${desc}</strong> &nbsp;|&nbsp; Descarga de demasías: <strong>${desc}</strong>
@@ -1032,6 +1045,29 @@ function onFleteChange(){
   S.flete=sel.value;
   document.getElementById('sec_flete_dedicado').hidden=(S.flete!=='dedicado');
   document.getElementById('sec_paqueteria').hidden=(S.flete!=='paqueteria');
+
+  // Validación paquetería: máx 550 m³ por tanque, sin techo
+  const warn=document.getElementById('warn_paqueteria');
+  if(S.flete==='paqueteria'){
+    const excedeTamano=S.grupos.some(g=>g.m3>550);
+    const tieneTecho=S.grupos.some(g=>g.cubierta&&g.cubierta!=='sin_cubierta');
+    let msgs=[];
+    if(excedeTamano){
+      const grandes=S.grupos.filter(g=>g.m3>550).map(g=>g.m3+' m³').join(', ');
+      msgs.push(`Tanques de ${grandes} exceden el límite de 550 m³ para paquetería.`);
+    }
+    if(tieneTecho) msgs.push('Tanques con cubierta (techo) no pueden embarcarse por paquetería.');
+    if(msgs.length){
+      warn.hidden=false;
+      warn.innerHTML=`<strong>⛔ No es posible embarcar por paquetería</strong><ul style="margin:6px 0 0 16px;padding:0;">${msgs.map(m=>`<li>${m}</li>`).join('')}</ul><div style="margin-top:6px;font-size:12px;">Seleccione <strong>Servicio Dedicado</strong> para este pedido.</div>`;
+      // Forzar selección de dedicado
+      const radDed=document.querySelector('input[name=flete][value="dedicado"]');
+      if(radDed){ radDed.checked=true; S.flete='dedicado';
+        document.getElementById('sec_flete_dedicado').hidden=false;
+        document.getElementById('sec_paqueteria').hidden=true; }
+    } else { warn.hidden=true; }
+  } else { warn.hidden=true; }
+
   updateSummary();
 }
 
@@ -1138,8 +1174,15 @@ function updateSummary(){
   if(S.alt_rest==='si'&&(v('alt_max')||S.alt_max)) rest.push('Alt max '+(v('alt_max')||S.alt_max)+' m');
   if(S.diam_rest==='no'&&S.alt_rest==='no') rest.push('Sin restricciones');
   set('s_rest',rest.length?rest.join(' · '):null);
-  const ml={pvc:'PVC 1,500 g/m²',pvc_mec:'PVC 1,500 g/m²',fpe:'fPE 0.8 mm',ldpe:'fPE 0.8 mm'};
-  set('s_memb',ml[S.membrana]||null);
+  const ml={pvc:'PVC 1,500 g/m²',pvc_mec:'PVC 1,500 g/m²',fpe:'fPE 0.8 mm',fpe_eco:'fPE eco 0.8 mm',ldpe:'fPE eco 0.8 mm'};
+  // En flujo multi-grupo la membrana se almacena por grupo, no en S.membrana
+  let membLabel = ml[S.membrana] || null;
+  if(!membLabel && S.grupos && S.grupos.length > 0){
+    const membs = [...new Set(S.grupos.map(g=>g.membrana).filter(Boolean))];
+    if(membs.length === 1) membLabel = ml[membs[0]] || membs[0];
+    else if(membs.length > 1) membLabel = membs.map(m=>ml[m]||m).join(' / ');
+  }
+  set('s_memb', membLabel);
   const cubSel=document.querySelector('input[name=cubierta]:checked');
   if(cubSel) S.cubierta=cubSel.value;
   const cl={malla:'Malla PP 99%',acero_zma:'Acero ZMA',sin_cubierta:'Sin cubierta'};
@@ -1303,10 +1346,17 @@ async function enviarCorreos(folio, instLink, fletLink) {
   });
 
   if (S.flete === 'dedicado') {
-    const pesoInfo = calcPesoEmbarque(S.volumen_m3 || 0, S.cubierta || '');
-    const pesoStr = pesoInfo.estimado
-      ? `~${pesoInfo.kg.toLocaleString('es-MX')} kg (estimado)`
-      : `${pesoInfo.kg.toLocaleString('es-MX')} kg`;
+    // Calcular peso real sumando todos los grupos
+    let pesoTotal = 0; let hayEstimado = false;
+    (S.grupos && S.grupos.length > 0 ? S.grupos : [{m3: S.volumen_m3||0, cubierta: S.cubierta||'', cantidad: 1}])
+      .forEach(g => {
+        const pi = calcPesoEmbarque(parseFloat(g.m3)||0, g.cubierta||'');
+        pesoTotal += pi.kg * (g.cantidad || 1);
+        if(pi.estimado) hayEstimado = true;
+      });
+    const pesoStr = hayEstimado
+      ? `~${pesoTotal.toLocaleString('es-MX')} kg (estimado)`
+      : `${pesoTotal.toLocaleString('es-MX')} kg`;
 
     await sendEmail(TEMPLATE_FLET, {
       to_email: 'Transportes.colchado@hotmail.com',
@@ -1408,13 +1458,12 @@ function onGrupoVolInput(){
   const hint=document.getElementById('g_vol_hint');
   if(_grupoUnit==='lt'&&raw>0) hint.textContent=`= ${m3.toLocaleString('es-MX',{maximumFractionDigits:2})} m³`;
   else hint.textContent='';
-  // Recomendación de stock
-  const SKUS=[{m3:56,sku:'S50'},{m3:107,sku:'S100'},{m3:173,sku:'S150'},{m3:176,sku:'S150LP'},{m3:275,sku:'S250'},{m3:271,sku:'S250LP'},{m3:353,sku:'S350'}];
+  // Recomendación de stock — catálogo completo
   const rec=document.getElementById('g_stock_rec');
   if(m3>0){
-    const exact=SKUS.find(s=>Math.abs(s.m3-m3)<2);
-    if(exact){rec.style.display='block';document.getElementById('g_stock_rec_text').textContent=`${exact.sku} (${exact.m3} m³) — tanque estándar de inventario.`;}
-    else{rec.style.display='block';document.getElementById('g_stock_rec_text').textContent=`${m3} m³ — capacidad especial (fabricación bajo pedido).`;}
+    const r=getStockRec(m3);
+    rec.style.display='block';
+    document.getElementById('g_stock_rec_text').textContent=_stockRecMsg(m3,r);
   }else{rec.style.display='none';}
 }
 
@@ -1454,13 +1503,13 @@ function removeGrupo(i){
 function renderGruposLista(){
   const cont=document.getElementById('grupos_lista');
   if(!cont) return;
-  const SKUS=[{m3:56,sku:'S50'},{m3:107,sku:'S100'},{m3:173,sku:'S150'},{m3:176,sku:'S150LP'},{m3:275,sku:'S250'},{m3:271,sku:'S250LP'},{m3:353,sku:'S350'}];
   if(S.grupos.length===0){cont.innerHTML='<div style="color:var(--muted);font-size:13px;padding:10px 0;">No hay grupos agregados aún.</div>';return;}
   let html='<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Grupos agregados</div>';
   html+='<div style="display:flex;flex-direction:column;gap:8px;">';
   S.grupos.forEach((g,i)=>{
-    const exact=SKUS.find(s=>Math.abs(s.m3-g.m3)<2);
-    const skuTag=exact?`<span style="font-size:11px;background:#E8EFFE;color:#1B4FA8;padding:2px 7px;border-radius:4px;font-weight:700;">${exact.sku}</span>`:'<span style="font-size:11px;background:#FFF3E0;color:#7A4F00;padding:2px 7px;border-radius:4px;">Especial</span>';
+    const r=getStockRec(g.m3);
+    const skuMatch=(r&&(r.type==='exact'||r.type==='smaller'||r.type==='up'||r.type==='constrained'))? r.t : null;
+    const skuTag=skuMatch?`<span style="font-size:11px;background:#E8EFFE;color:#1B4FA8;padding:2px 7px;border-radius:4px;font-weight:700;">${skuMatch.sku}</span>`:'<span style="font-size:11px;background:#FFF3E0;color:#7A4F00;padding:2px 7px;border-radius:4px;">Especial</span>';
     const conf=g.membrana?'<span style="color:#1C7D4A;font-size:11px;">✓ Configurado</span>':'<span style="color:var(--muted);font-size:11px;">Pendiente</span>';
     html+=`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;">
       <div style="flex:1;">
@@ -1526,9 +1575,9 @@ function renderStepGrupoHeader(){
   const idx=S.grupoActual;
   if(idx>=total) return;
   const g=S.grupos[idx];
-  const SKUS=[{m3:56,sku:'S50'},{m3:107,sku:'S100'},{m3:173,sku:'S150'},{m3:176,sku:'S150LP'},{m3:275,sku:'S250'},{m3:271,sku:'S250LP'},{m3:353,sku:'S350'}];
-  const exact=SKUS.find(s=>Math.abs(s.m3-g.m3)<2);
-  const label=`Grupo ${idx+1} de ${total}: ${g.cantidad}× ${g.m3} m³${exact?' ('+exact.sku+')':''}`;
+  const r=getStockRec(g.m3);
+  const skuLabel=(r&&r.t)?` (${r.t.sku})`:'';
+  const label=`Grupo ${idx+1} de ${total}: ${g.cantidad}× ${g.m3} m³${skuLabel}`;
   ['step3_sub','step4_sub','step5_sub'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.textContent=label;
@@ -1639,7 +1688,7 @@ const STOCK_TANKS=[
   {sku:'S500LP', m3:539, diam:14,   h:3.5, wTanque:2700, wTecho:2300, wMembrana:560},
   {sku:'S650LP', m3:704, diam:16,   h:3.5, wTanque:3500, wTecho:3000, wMembrana:680},
   {sku:'S700LP', m3:794, diam:17,   h:3.5, wTanque:3700, wTecho:3500, wMembrana:750},
-  {sku:'S1100LP',m3:1145,diam:18,   h:4.5, wTanque:5300, wTecho:4500, wMembrana:900}
+{sku:'S1100LP',m3:1145,diam:18,   h:4.5, wTanque:5300, wTecho:4500, wMembrana:900}
 ];
 
 // Calcula peso de embarque según SKU y tipo de cubierta
@@ -1650,13 +1699,27 @@ function calcPesoEmbarque(m3, cubierta) {
     const total = tank.wTanque + tank.wMembrana + (conTecho ? tank.wTecho : 0);
     return { kg: total, estimado: false, sku: tank.sku };
   }
-  // Fuera de stock: prorrateo 7 kg/m³
-  const total = Math.round(m3 * 7);
+  // Fuera de stock: prorrateo ~9.8 kg/m³ (basado en pesos reales S900 sin cubierta)
+  const total = Math.round(m3 * 9.8);
   return { kg: total, estimado: true, sku: null };
+}
+function _stockRecMsg(m3,r){
+  if(!r) return `${m3} m³ — capacidad especial (fabricación bajo pedido).`;
+  switch(r.type){
+    case 'exact':    return `${r.t.sku} (${r.t.m3} m³) — tanque estándar de inventario ✓`;
+    case 'smaller':  return `Sugerencia: reducir a ${r.t.sku} (${r.t.m3} m³) — solo ${r.save} m³ menos, stock inmediato.`;
+    case 'up':       return `Sugerencia: subir a ${r.t.sku} (${r.t.m3} m³) — siguiente talla estándar (+${r.add} m³).`;
+    case 'constrained': return `Sugerencia: ${r.t.sku} (${r.t.m3} m³) — mejor opción dentro del diámetro máx ${r.diamMax} m.`;
+    case 'no_match_diam': return `${m3} m³ — ningún modelo estándar cabe en Ø ${r.diamMax} m (fabricación especial).`;
+    case 'no_eligible_up': return `${m3} m³ — sin modelo estándar mayor dentro de Ø ${r.diamMax} m; considere ampliar restricción.`;
+    case 'custom':   return `${m3} m³ — capacidad especial (fabricación bajo pedido).`;
+    default:         return `${m3} m³ — capacidad especial (fabricación bajo pedido).`;
+  }
 }
 function getStockRec(m3){
   if(!m3||m3<=0) return null;
-  const diamMax=parseFloat(document.getElementById('diam_max')?document.getElementById('diam_max').value:'')||null;
+  const _diamEl=document.getElementById('diam_max')||document.getElementById('g_diam_max');
+  const diamMax=parseFloat(_diamEl?_diamEl.value:'')||null;
   const sorted=[...STOCK_TANKS].sort((a,b)=>a.m3-b.m3);
   // Filter by diameter constraint if set
   const eligible = diamMax ? sorted.filter(t=>t.diam<=diamMax) : sorted;
