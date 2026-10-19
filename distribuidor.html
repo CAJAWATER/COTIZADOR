@@ -1798,16 +1798,23 @@ function getStockRec(m3, diamMax){
   // Más cercano arriba y abajo dentro de los elegibles
   const up=eligible.find(t=>t.m3>m3);
   const down=[...eligible].reverse().find(t=>t.m3<m3);
-  // Sin restricción: prioridad UP si ≤20%, luego DOWN si ≤10%, luego UP cualquier distancia
+  // Sin restricción:
+  // Regla: si DOWN≤10% Y DOWN más cercano que UP → preferir DOWN
+  //        si UP≤20% (y no aplica lo anterior) → UP
+  //        si DOWN≤10% → DOWN
+  //        UP a cualquier distancia → UP
   if(!diamMax){
-    if(up){
-      const pctUp=(up.m3-m3)/m3*100;
-      if(pctUp<=20) return {type:'up',t:up,add:up.m3-m3};
-    }
-    if(down){
-      const pctDown=(m3-down.m3)/m3*100;
-      if(pctDown<=10) return {type:'smaller',t:down,save:m3-down.m3,pct:pctDown.toFixed(0)};
-    }
+    const pctUp  = up   ? (up.m3  - m3) / m3 * 100 : Infinity;
+    const pctDown= down ? (m3 - down.m3) / m3 * 100 : Infinity;
+    // DOWN más cercano y dentro del 10% → bajar
+    if(down && pctDown<=10 && pctDown<pctUp)
+      return {type:'smaller',t:down,save:m3-down.m3,pct:pctDown.toFixed(0)};
+    // UP dentro del 20% → subir
+    if(up && pctUp<=20) return {type:'up',t:up,add:up.m3-m3};
+    // DOWN dentro del 10% (UP >20%) → bajar
+    if(down && pctDown<=10)
+      return {type:'smaller',t:down,save:m3-down.m3,pct:pctDown.toFixed(0)};
+    // UP a cualquier distancia → subir
     if(up) return {type:'up',t:up,add:up.m3-m3};
     return {type:'custom'};
   }
@@ -1821,17 +1828,17 @@ function getStockRec(m3, diamMax){
   // Hay elegible arriba: verificar si el "natural" (sin restricción) también cabe
   const naturalUp=sorted.find(t=>t.m3>m3);
   const pctUp=(up.m3-m3)/m3*100;
+  const pctDown=down?(m3-down.m3)/m3*100:Infinity;
   if(naturalUp && naturalUp.diam>diamMax){
     // El tanque natural no cabe → el elegible es el mejor dentro de la restricción
     return {type:'constrained',t:up,add:up.m3-m3,diamMax};
   }
-  // El tanque natural sí cabe (up === naturalUp): sugerir subir si ≤20%
+  // Mismo criterio de proximidad que sin restricción
+  if(down && pctDown<=10 && pctDown<pctUp)
+    return {type:'smaller',t:down,save:m3-down.m3,pct:pctDown.toFixed(0)};
   if(pctUp<=20) return {type:'up',t:up,add:up.m3-m3};
-  // >20% arriba: ver si hay down dentro del 10%
-  if(down){
-    const pctDown=(m3-down.m3)/m3*100;
-    if(pctDown<=10) return {type:'smaller',t:down,save:m3-down.m3,pct:pctDown.toFixed(0)};
-  }
+  if(down && pctDown<=10)
+    return {type:'smaller',t:down,save:m3-down.m3,pct:pctDown.toFixed(0)};
   return {type:'up',t:up,add:up.m3-m3};
 }
 
