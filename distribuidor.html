@@ -107,6 +107,13 @@ body{
 .step-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:600;letter-spacing:.04em;text-wrap:balance;}
 .step-sub{font-size:12px;color:rgba(255,255,255,.52);margin-top:2px;}
 .step-body{padding:22px;}
+/* GRUPO BANNER — visible en pasos 3-4-5 cuando hay múltiples grupos */
+.grupo-banner{display:none;background:linear-gradient(90deg,#1B4FA8 0%,#0D1B2A 100%);color:#fff;padding:18px 24px;border-top:3px solid #C0272D;border-bottom:2px solid rgba(255,255,255,.15);align-items:center;gap:20px;box-shadow:0 3px 12px rgba(13,27,42,.25);}
+.grupo-banner.visible{display:flex;}
+.grupo-banner-badge{font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:700;line-height:1;min-width:48px;text-align:center;background:rgba(255,255,255,.15);border-radius:8px;padding:6px 10px;letter-spacing:-.01em;}
+.grupo-banner-info{flex:1;}
+.grupo-banner-label{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:700;letter-spacing:.02em;line-height:1.15;}
+.grupo-banner-sub{font-size:13px;color:rgba(255,255,255,.75);margin-top:4px;font-weight:500;}
 
 /* FIELDS */
 .field{margin-bottom:18px;}
@@ -343,7 +350,7 @@ textarea{resize:vertical;min-height:72px;}
             <div class="two-col">
               <div class="field">
                 <label>Diámetro máximo (m)</label>
-                <input type="number" id="g_diam_max" placeholder="Sin restricción" step="0.5" min="1">
+                <input type="number" id="g_diam_max" placeholder="Sin restricción" step="0.5" min="1" oninput="refreshGrupoRec()">
               </div>
               <div class="field">
                 <label>Altura máxima (m)</label>
@@ -373,6 +380,13 @@ textarea{resize:vertical;min-height:72px;}
           <div>
             <div class="step-title">Selección de Membrana</div>
             <div class="step-sub" id="step3_sub">Tres preguntas para determinar la membrana correcta</div>
+          </div>
+        </div>
+        <div class="grupo-banner" id="grupo_banner_3">
+          <div class="grupo-banner-badge" id="grupo_banner_3_badge"></div>
+          <div class="grupo-banner-info">
+            <div class="grupo-banner-label" id="grupo_banner_3_label"></div>
+            <div class="grupo-banner-sub" id="grupo_banner_3_sub"></div>
           </div>
         </div>
         <div class="step-body">
@@ -431,6 +445,13 @@ textarea{resize:vertical;min-height:72px;}
             <div class="step-sub" id="step4_sub">Seleccione la cubierta para el tanque</div>
           </div>
         </div>
+        <div class="grupo-banner" id="grupo_banner_4">
+          <div class="grupo-banner-badge" id="grupo_banner_4_badge"></div>
+          <div class="grupo-banner-info">
+            <div class="grupo-banner-label" id="grupo_banner_4_label"></div>
+            <div class="grupo-banner-sub" id="grupo_banner_4_sub"></div>
+          </div>
+        </div>
         <div class="step-body">
           <div class="option-grid">
             <label class="opt-card">
@@ -478,6 +499,13 @@ textarea{resize:vertical;min-height:72px;}
           <div>
             <div class="step-title">Descargas Estándar</div>
             <div class="step-sub" id="step5_sub">Flanges y conexiones propuestas según capacidad</div>
+          </div>
+        </div>
+        <div class="grupo-banner" id="grupo_banner_5">
+          <div class="grupo-banner-badge" id="grupo_banner_5_badge"></div>
+          <div class="grupo-banner-info">
+            <div class="grupo-banner-label" id="grupo_banner_5_label"></div>
+            <div class="grupo-banner-sub" id="grupo_banner_5_sub"></div>
           </div>
         </div>
         <div class="step-body">
@@ -1073,9 +1101,11 @@ function onFleteChange(){
 
 // ── VIÁTICOS ─────────────────────────────────────────────────────────────────
 // Reglas corregidas:
-//   ≤ 200 km: 1 día comidas (sin hotel si 1 tanque; hotel si 2+ tanques)
-//   > 200 km: 2 días comidas (1 traslado + 1 instalación), hotel siempre
-//   ≥ 500 km: vuelo + renta auto
+//   ≤ 200 km: 1 día comida por tanque (sin hotel si 1 tanque; 1 noche si 2+)
+//   201–400 km: 1 día traslado + 1 día por tanque, hotel siempre
+//   > 400 km: vuelo + renta auto
+//     Día 1: traslado ida · Días 2…N+1: instalación (1 por tanque) · Día N+2: regreso
+//     → dias_comida = tanks+2, noches_hotel = tanks+1, auto_dias = tanks+2
 function calcViaticos(){
   const km=parseFloat(v('dist_km'))||0;
   const tanks=parseInt(v('num_tanques'))||1;
@@ -1084,20 +1114,22 @@ function calcViaticos(){
   let dias_comida, noches_hotel, traslado_total, traslado_desc, avion=false, auto_dias=0;
 
   if(km<=200){
-    dias_comida=tanks;                  // 1 día de comida por tanque
-    noches_hotel=tanks>=2?1:0;         // traslados cortos: 1 noche aunque sean 2+ tanques (sale temprano, instala todo y regresa)
+    dias_comida=tanks;                 // 1 día de comida por tanque
+    noches_hotel=tanks>=2?1:0;        // cortos: sale temprano, instala todo, regresa mismo día si 1 tanque
     traslado_total=km*VT.km_rate*2;
-    traslado_desc=`${km} km × ${VT.km_rate}/km × 2 = $${traslado_total.toFixed(0)}`;
-  } else if(km<=499){
-    dias_comida=tanks+1;               // 1 día traslado + 1 día por tanque
-    noches_hotel=tanks>=2?tanks:1;    // siempre al menos 1 noche
+    traslado_desc=`${km} km × $${VT.km_rate}/km × 2 = $${traslado_total.toFixed(0)}`;
+  } else if(km<=400){
+    dias_comida=tanks+1;              // 1 día traslado + 1 día por tanque
+    noches_hotel=tanks>=2?tanks:1;   // siempre al menos 1 noche
     traslado_total=km*VT.km_rate*2;
-    traslado_desc=`${km} km × ${VT.km_rate}/km × 2 = $${traslado_total.toFixed(0)}`;
+    traslado_desc=`${km} km × $${VT.km_rate}/km × 2 = $${traslado_total.toFixed(0)}`;
   } else {
+    // > 400 km: viaje en avión
+    // Día 1 ida · días 2…(tanks+1) instalación · día (tanks+2) regreso
     avion=true;
-    dias_comida=tanks+1;              // días en sitio + regreso
-    noches_hotel=tanks;
-    auto_dias=tanks+1;
+    dias_comida=tanks+2;             // ida + N instalaciones + regreso
+    noches_hotel=tanks+1;            // noche previa a cada instalación + noche antes del regreso
+    auto_dias=tanks+2;               // auto todo el viaje
     traslado_total=VT.vuelo_ida*2+VT.auto_renta_dia*auto_dias;
     traslado_desc=`Vuelo ida+vuelta $${VT.vuelo_ida*2} + auto $${VT.auto_renta_dia}/día × ${auto_dias} días`;
   }
@@ -1461,10 +1493,21 @@ function onGrupoVolInput(){
   // Recomendación de stock — catálogo completo
   const rec=document.getElementById('g_stock_rec');
   if(m3>0){
-    const r=getStockRec(m3);
+    const _dMax=parseFloat(document.getElementById('g_diam_max').value)||null;
+    const r=getStockRec(m3,_dMax);
     rec.style.display='block';
     document.getElementById('g_stock_rec_text').textContent=_stockRecMsg(m3,r);
   }else{rec.style.display='none';}
+}
+// Recalcular recomendación cuando cambia el diámetro máximo
+function refreshGrupoRec(){
+  const m3=parseFloat(document.getElementById('g_volumen_m3').value);
+  if(!m3||m3<=0) return;
+  const _dMax=parseFloat(document.getElementById('g_diam_max').value)||null;
+  const r=getStockRec(m3,_dMax);
+  const rec=document.getElementById('g_stock_rec');
+  rec.style.display='block';
+  document.getElementById('g_stock_rec_text').textContent=_stockRecMsg(m3,r);
 }
 
 function addGrupo(){
@@ -1507,7 +1550,7 @@ function renderGruposLista(){
   let html='<div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Grupos agregados</div>';
   html+='<div style="display:flex;flex-direction:column;gap:8px;">';
   S.grupos.forEach((g,i)=>{
-    const r=getStockRec(g.m3);
+    const r=getStockRec(g.m3, parseFloat(g.diam_max)||null);
     const skuMatch=(r&&(r.type==='exact'||r.type==='smaller'||r.type==='up'||r.type==='constrained'))? r.t : null;
     const skuTag=skuMatch?`<span style="font-size:11px;background:#E8EFFE;color:#1B4FA8;padding:2px 7px;border-radius:4px;font-weight:700;">${skuMatch.sku}</span>`:'<span style="font-size:11px;background:#FFF3E0;color:#7A4F00;padding:2px 7px;border-radius:4px;">Especial</span>';
     const conf=g.membrana?'<span style="color:#1C7D4A;font-size:11px;">✓ Configurado</span>':'<span style="color:var(--muted);font-size:11px;">Pendiente</span>';
@@ -1575,12 +1618,31 @@ function renderStepGrupoHeader(){
   const idx=S.grupoActual;
   if(idx>=total) return;
   const g=S.grupos[idx];
-  const r=getStockRec(g.m3);
+  const r=getStockRec(g.m3, parseFloat(g.diam_max)||null);
   const skuLabel=(r&&r.t)?` (${r.t.sku})`:'';
-  const label=`Grupo ${idx+1} de ${total}: ${g.cantidad}× ${g.m3} m³${skuLabel}`;
+  const subText=`Tres preguntas para determinar la membrana correcta`;
+  // Actualizar step-sub (línea discreta)
+  const subLabel=`Grupo ${idx+1} de ${total}: ${g.cantidad}× ${g.m3} m³${skuLabel}`;
   ['step3_sub','step4_sub','step5_sub'].forEach(id=>{
     const el=document.getElementById(id);
-    if(el) el.textContent=label;
+    if(el) el.textContent=subLabel;
+  });
+  // Actualizar banner prominente
+  const dimLabel=(r&&r.t)?`Ø${r.t.diam} m × ${r.t.h} m alt.`:'Fabricación especial';
+  const cantLabel=`${g.cantidad} unidad${g.cantidad>1?'es':''}`;
+  const mainLabel=`${g.cantidad}× Tanque ${g.m3} m³${skuLabel}`;
+  const detailLabel=total>1?`Grupo ${idx+1} de ${total}  ·  ${dimLabel}`:`${dimLabel}  ·  ${cantLabel}`;
+  [3,4,5].forEach(n=>{
+    const banner=document.getElementById(`grupo_banner_${n}`);
+    if(!banner) return;
+    // Solo mostrar si hay más de 1 grupo, o si es útil (siempre mostrar)
+    banner.classList.toggle('visible',true);
+    const badge=document.getElementById(`grupo_banner_${n}_badge`);
+    const lbl=document.getElementById(`grupo_banner_${n}_label`);
+    const sub=document.getElementById(`grupo_banner_${n}_sub`);
+    if(badge) badge.textContent=total>1?`${idx+1}/${total}`:'';
+    if(lbl) lbl.textContent=mainLabel;
+    if(sub) sub.textContent=detailLabel;
   });
 }
 
@@ -1703,52 +1765,74 @@ function calcPesoEmbarque(m3, cubierta) {
   const total = Math.round(m3 * 9.8);
   return { kg: total, estimado: true, sku: null };
 }
+function _fmtT(t){ return `${t.sku} (${t.m3} m³, Ø${t.diam} m × ${t.h} m alt.)`; }
 function _stockRecMsg(m3,r){
   if(!r) return `${m3} m³ — capacidad especial (fabricación bajo pedido).`;
   switch(r.type){
-    case 'exact':    return `${r.t.sku} (${r.t.m3} m³) — tanque estándar de inventario ✓`;
-    case 'smaller':  return `Sugerencia: reducir a ${r.t.sku} (${r.t.m3} m³) — solo ${r.save} m³ menos, stock inmediato.`;
-    case 'up':       return `Sugerencia: subir a ${r.t.sku} (${r.t.m3} m³) — siguiente talla estándar (+${r.add} m³).`;
-    case 'constrained': return `Sugerencia: ${r.t.sku} (${r.t.m3} m³) — mejor opción dentro del diámetro máx ${r.diamMax} m.`;
+    case 'exact':    return `${_fmtT(r.t)} — tanque estándar de inventario ✓`;
+    case 'smaller':  return `Sugerencia: reducir a ${_fmtT(r.t)} — solo ${r.save} m³ menos, stock inmediato.`;
+    case 'up':       return `Sugerencia: subir a ${_fmtT(r.t)} — siguiente talla estándar (+${r.add} m³).`;
+    case 'constrained': return `Sugerencia: ${_fmtT(r.t)} — mejor opción dentro del diámetro máx ${r.diamMax} m.`;
     case 'no_match_diam': return `${m3} m³ — ningún modelo estándar cabe en Ø ${r.diamMax} m (fabricación especial).`;
     case 'no_eligible_up': return `${m3} m³ — sin modelo estándar mayor dentro de Ø ${r.diamMax} m; considere ampliar restricción.`;
     case 'custom':   return `${m3} m³ — capacidad especial (fabricación bajo pedido).`;
     default:         return `${m3} m³ — capacidad especial (fabricación bajo pedido).`;
   }
 }
-function getStockRec(m3){
+// getStockRec(m3, diamMax?)
+// diamMax se pasa como argumento explícito (metros). Si no se pasa, lo lee del campo g_diam_max activo.
+function getStockRec(m3, diamMax){
   if(!m3||m3<=0) return null;
-  const _diamEl=document.getElementById('diam_max')||document.getElementById('g_diam_max');
-  const diamMax=parseFloat(_diamEl?_diamEl.value:'')||null;
+  // Si no se pasa diamMax explícito, leerlo del campo del formulario de grupo activo
+  if(diamMax===undefined){
+    const _el=document.getElementById('g_diam_max');
+    diamMax=parseFloat(_el?_el.value:'')||null;
+  }
   const sorted=[...STOCK_TANKS].sort((a,b)=>a.m3-b.m3);
-  // Filter by diameter constraint if set
+  // Filtrar por restricción de diámetro
   const eligible = diamMax ? sorted.filter(t=>t.diam<=diamMax) : sorted;
   if(!eligible.length) return {type:'no_match_diam',diamMax};
-  // Find exact match
+  // Coincidencia exacta
   const exact=eligible.find(t=>t.m3===m3);
   if(exact) return {type:'exact',t:exact};
-  // Nearest above and below within eligible tanks
+  // Más cercano arriba y abajo dentro de los elegibles
   const up=eligible.find(t=>t.m3>m3);
   const down=[...eligible].reverse().find(t=>t.m3<m3);
-  // If diamMax constraint and no eligible tank above requested volume → space constraint message
-  if(diamMax && !up){
+  // Sin restricción: prioridad UP si ≤20%, luego DOWN si ≤10%, luego UP cualquier distancia
+  if(!diamMax){
+    if(up){
+      const pctUp=(up.m3-m3)/m3*100;
+      if(pctUp<=20) return {type:'up',t:up,add:up.m3-m3};
+    }
+    if(down){
+      const pctDown=(m3-down.m3)/m3*100;
+      if(pctDown<=10) return {type:'smaller',t:down,save:m3-down.m3,pct:pctDown.toFixed(0)};
+    }
+    if(up) return {type:'up',t:up,add:up.m3-m3};
+    return {type:'custom'};
+  }
+  // Con restricción de diámetro:
+  // Si no hay elegible arriba del volumen pedido → mensaje de espacio
+  if(!up){
     const naturalUp=sorted.find(t=>t.m3>m3);
     if(naturalUp) return {type:'no_eligible_up',diamMax};
+    return {type:'custom'};
   }
-  // Threshold logic: ≤10% reduction to lower model → suggest lower (immediate delivery)
+  // Hay elegible arriba: verificar si el "natural" (sin restricción) también cabe
+  const naturalUp=sorted.find(t=>t.m3>m3);
+  const pctUp=(up.m3-m3)/m3*100;
+  if(naturalUp && naturalUp.diam>diamMax){
+    // El tanque natural no cabe → el elegible es el mejor dentro de la restricción
+    return {type:'constrained',t:up,add:up.m3-m3,diamMax};
+  }
+  // El tanque natural sí cabe (up === naturalUp): sugerir subir si ≤20%
+  if(pctUp<=20) return {type:'up',t:up,add:up.m3-m3};
+  // >20% arriba: ver si hay down dentro del 10%
   if(down){
-    const pct=(m3-down.m3)/m3*100;
-    if(pct<=10) return {type:'smaller',t:down,save:m3-down.m3,pct:pct.toFixed(0)};
+    const pctDown=(m3-down.m3)/m3*100;
+    if(pctDown<=10) return {type:'smaller',t:down,save:m3-down.m3,pct:pctDown.toFixed(0)};
   }
-  // If diamMax constraint excludes the natural next-up, highlight the constrained alternative
-  if(diamMax && up){
-    const naturalUp=sorted.find(t=>t.m3>m3);
-    if(naturalUp && naturalUp.diam>diamMax){
-      return {type:'constrained',t:up,add:up.m3>m3?up.m3-m3:0,diamMax};
-    }
-  }
-  if(up) return {type:'up',t:up,add:up.m3-m3};
-  return {type:'custom'};
+  return {type:'up',t:up,add:up.m3-m3};
 }
 
 // ── DN GRID (descargas) ───────────────────────────────────────────────────────
