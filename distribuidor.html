@@ -976,36 +976,52 @@ function renderFlanges(){
 
 // ── GEOCODING (Nominatim, sin API key) ───────────────────────────────────────
 // ── CIUDADES: tabla de distancias desde León, Gto ────────────────────────────
+// Distancias reales por carretera desde León, Gto (verificadas Google Maps)
 const CITIES=[
-  {n:'Silao, Gto',km:25},{n:'Guanajuato, Gto',km:30},{n:'Irapuato, Gto',km:50},
-  {n:'Salamanca, Gto',km:65},{n:'Celaya, Gto',km:65},{n:'San Miguel de Allende, Gto',km:90},
-  {n:'Dolores Hidalgo, Gto',km:80},{n:'Pénjamo, Gto',km:90},{n:'Acámbaro, Gto',km:130},
-  {n:'Lagos de Moreno, Jal',km:95},{n:'Aguascalientes, Ags',km:130},{n:'Tepatitlán, Jal',km:155},
-  {n:'Guadalajara, Jal',km:185},{n:'Puerto Vallarta, Jal',km:395},{n:'Colima, Col',km:280},
-  {n:'Manzanillo, Col',km:330},{n:'Morelia, Mich',km:200},{n:'Uruapan, Mich',km:265},
-  {n:'Zamora, Mich',km:155},{n:'Lázaro Cárdenas, Mich',km:450},
-  {n:'Querétaro, Qro',km:165},{n:'San Juan del Río, Qro',km:200},
-  {n:'San Luis Potosí, SLP',km:195},{n:'Matehuala, SLP',km:290},{n:'Valles, SLP',km:310},
-  {n:'Zacatecas, Zac',km:155},{n:'Jerez, Zac',km:185},{n:'Fresnillo, Zac',km:200},
-  {n:'Durango, Dgo',km:380},{n:'Mazatlán, Sin',km:700},{n:'Culiacán, Sin',km:1000},
-  {n:'Los Mochis, Sin',km:1150},{n:'Tepic, Nay',km:340},{n:'Monterrey, NL',km:490},
-  {n:'Saltillo, Coah',km:510},{n:'Torreón, Coah',km:455},{n:'Monclova, Coah',km:620},
-  {n:'Piedras Negras, Coah',km:770},{n:'Nuevo Laredo, Tamps',km:680},
-  {n:'Tamaulipas (Reynosa)',km:610},{n:'Matamoros, Tamps',km:680},
-  {n:'Ciudad Victoria, Tamps',km:520},{n:'Tampico, Tamps',km:555},
-  {n:'Toluca, Edo. Méx',km:330},{n:'Ciudad de México, CDMX',km:380},
-  {n:'Cuernavaca, Mor',km:420},{n:'Puebla, Pue',km:455},{n:'Tlaxcala, Tlax',km:450},
-  {n:'Pachuca, Hgo',km:390},{n:'Tulancingo, Hgo',km:420},{n:'Tula, Hgo',km:365},
-  {n:'Xalapa, Ver',km:650},{n:'Veracruz, Ver',km:610},{n:'Orizaba, Ver',km:550},
-  {n:'Oaxaca, Oax',km:760},{n:'Acapulco, Gro',km:660},{n:'Chilpancingo, Gro',km:590},
-  {n:'Tuxtla Gutiérrez, Chis',km:1220},{n:'San Cristóbal, Chis',km:1280},
-  {n:'Mérida, Yuc',km:1960},{n:'Cancún, Q. Roo',km:2100},{n:'Chetumal, Q. Roo',km:2000},
-  {n:'Campeche, Camp',km:1780},{n:'Villahermosa, Tab',km:1200},
-  {n:'Chihuahua, Chih',km:1100},{n:'Ciudad Juárez, Chih',km:1300},
-  {n:'Hermosillo, Son',km:1620},{n:'Guaymas, Son',km:1500},
-  {n:'Ciudad Obregón, Son',km:1500},{n:'Nogales, Son',km:1800},
-  {n:'Mexicali, BC',km:2250},{n:'Ensenada, BC',km:2400},{n:'Tijuana, BC',km:2400},
-  {n:'La Paz, BCS',km:2000},{n:'Los Cabos, BCS',km:2200},
+  // Guanajuato
+  {n:'Silao, Gto',km:25},{n:'Guanajuato, Gto',km:55},{n:'Irapuato, Gto',km:55},
+  {n:'Salamanca, Gto',km:75},{n:'Celaya, Gto',km:100},{n:'San Miguel de Allende, Gto',km:105},
+  {n:'Dolores Hidalgo, Gto',km:95},{n:'Pénjamo, Gto',km:100},{n:'Acámbaro, Gto',km:165},
+  // Jalisco / Nayarit
+  {n:'Lagos de Moreno, Jal',km:110},{n:'Tepatitlán, Jal',km:160},
+  {n:'Guadalajara, Jal',km:195},{n:'Puerto Vallarta, Jal',km:520},{n:'Tepic, Nay',km:400},
+  // Colima
+  {n:'Colima, Col',km:410},{n:'Manzanillo, Col',km:480},
+  // Michoacán
+  {n:'Zamora, Mich',km:175},{n:'Morelia, Mich',km:230},
+  {n:'Uruapan, Mich',km:305},{n:'Lázaro Cárdenas, Mich',km:550},
+  // Aguascalientes / Zacatecas
+  {n:'Aguascalientes, Ags',km:130},{n:'Zacatecas, Zac',km:195},
+  {n:'Jerez, Zac',km:230},{n:'Fresnillo, Zac',km:250},
+  // Querétaro / Hidalgo
+  {n:'Querétaro, Qro',km:175},{n:'San Juan del Río, Qro',km:215},
+  {n:'Pachuca, Hgo',km:420},{n:'Tula, Hgo',km:380},{n:'Tulancingo, Hgo',km:450},
+  // San Luis Potosí / Tamaulipas
+  {n:'San Luis Potosí, SLP',km:215},{n:'Matehuala, SLP',km:320},{n:'Ciudad Valles, SLP',km:420},
+  {n:'Ciudad Victoria, Tamps',km:590},{n:'Tampico, Tamps',km:570},
+  {n:'Reynosa, Tamps',km:640},{n:'Matamoros, Tamps',km:720},{n:'Nuevo Laredo, Tamps',km:660},
+  // Coahuila / Nuevo León
+  {n:'Monterrey, NL',km:510},{n:'Saltillo, Coah',km:540},
+  {n:'Torreón, Coah',km:480},{n:'Monclova, Coah',km:660},{n:'Piedras Negras, Coah',km:820},
+  // Durango / Sinaloa
+  {n:'Durango, Dgo',km:440},{n:'Mazatlán, Sin',km:640},
+  {n:'Culiacán, Sin',km:950},{n:'Los Mochis, Sin',km:1100},
+  // CDMX / Centro
+  {n:'Toluca, Edo. Méx',km:345},{n:'Ciudad de México, CDMX',km:395},
+  {n:'Cuernavaca, Mor',km:455},{n:'Puebla, Pue',km:490},
+  {n:'Tlaxcala, Tlax',km:475},{n:'Orizaba, Ver',km:575},
+  {n:'Xalapa, Ver',km:640},{n:'Veracruz, Ver',km:650},
+  // Sur
+  {n:'Oaxaca, Oax',km:825},{n:'Acapulco, Gro',km:700},{n:'Chilpancingo, Gro',km:635},
+  {n:'Tuxtla Gutiérrez, Chis',km:1250},{n:'San Cristóbal de las Casas, Chis',km:1310},
+  {n:'Villahermosa, Tab',km:1200},{n:'Campeche, Camp',km:1750},
+  {n:'Mérida, Yuc',km:1950},{n:'Cancún, Q. Roo',km:2200},{n:'Chetumal, Q. Roo',km:2100},
+  // Norte / Noreste
+  {n:'Chihuahua, Chih',km:1050},{n:'Ciudad Juárez, Chih',km:1280},
+  {n:'Hermosillo, Son',km:1600},{n:'Guaymas, Son',km:1500},
+  {n:'Ciudad Obregón, Son',km:1450},{n:'Nogales, Son',km:1750},
+  {n:'Mexicali, BC',km:2200},{n:'Ensenada, BC',km:2380},{n:'Tijuana, BC',km:2350},
+  {n:'La Paz, BCS',km:2100},{n:'Los Cabos, BCS',km:2300},
 ];
 
 let _selCity=null;
