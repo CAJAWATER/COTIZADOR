@@ -1132,7 +1132,7 @@ function calcViaticos(){
 
   if(km<=200){
     dias_comida=tanks;                 // 1 día de comida por tanque
-    noches_hotel=tanks>=2?1:0;        // cortos: sale temprano, instala todo, regresa mismo día si 1 tanque
+    noches_hotel=tanks>=2?tanks-1:0;  // día1: traslado+inst1, noche1, ..., último día: instala+regresa
     traslado_total=km*VT.km_rate*2;
     traslado_desc=`${km} km × $${VT.km_rate}/km × 2 = $${traslado_total.toFixed(0)}`;
   } else if(km<=400){
