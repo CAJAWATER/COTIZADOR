@@ -656,7 +656,7 @@ textarea{resize:vertical;min-height:72px;}
           <!-- Aviso restricción paquetería -->
           <div id="warn_paqueteria" hidden style="background:#FFF3CD;border-left:4px solid #C0272D;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:12px;font-size:13px;color:#5C2A00;"></div>
 
-          <!-- Flete dedicado: dirección + enlace Maps -->
+          <!-- Flete dedicado: dirección + km + estimado -->
           <div id="sec_flete_dedicado" hidden>
             <div class="map-box">
               <div style="font-size:12px;font-weight:700;color:var(--blue);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px;">📍 Dirección de entrega (flete dedicado)</div>
@@ -664,7 +664,12 @@ textarea{resize:vertical;min-height:72px;}
                 <input type="text" id="flete_dir" placeholder="Calle, número, ciudad, estado" oninput="updateFleteLink()">
               </div>
               <a id="flete_maps_link" href="#" target="_blank" class="map-link" hidden>🗺️ Abrir en Google Maps ↗</a>
-              <div class="hint" style="margin-top:8px;">La dirección se incluirá en la cotización para solicitar tarifa al transportista.</div>
+              <div class="field" style="margin-top:12px;">
+                <label for="flete_km">Distancia por carretera desde León, Gto. hasta el proyecto (km)</label>
+                <input type="number" id="flete_km" placeholder="Ej. 195" min="0" oninput="calcFlete()" style="max-width:180px;">
+                <div class="hint">Calcula la distancia en <a href="https://maps.google.com" target="_blank" style="color:var(--blue);">Google Maps</a> desde León, Gto. hasta la dirección del proyecto e ingrésala aquí.</div>
+              </div>
+              <div id="flete_result" hidden style="margin-top:12px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:12px;font-size:13px;"></div>
             </div>
           </div>
 
@@ -767,7 +772,7 @@ const S = {
   m1:null, m2:null, m3:null, membrana:'',
   cubierta:'', flanges_custom:null, flanges_notas:'',
   servicio:'', ubicacion:'', dist_km:'', num_tanques:1,
-  flete:'', paq_oficina:'', flete_dir:'', flete_coords:null,
+  flete:'', paq_oficina:'', flete_dir:'', flete_coords:null, flete_estimado:null,
   email:'', notas:'', viaticos:null, geo_addr:''
 };
 
@@ -1063,6 +1068,73 @@ function hideCitySuggestions(){
   document.getElementById('city_suggestions').style.display='none';
 }
 
+// ── TARIFAS DE FLETE DEDICADO ────────────────────────────────────────────────
+const FLETE_VEHICULOS = [
+  { nombre:'Thorton',        cap_kg:12000, tarifa:90  },
+  { nombre:'Trailer (plana)',cap_kg:25000, tarifa:100 },
+  { nombre:'Low Boy',        cap_kg:45000, tarifa:null }, // cotizar aparte
+];
+
+function calcFlete(){
+  const km = parseFloat(document.getElementById('flete_km').value)||0;
+  const box = document.getElementById('flete_result');
+  if(!km){ box.hidden=true; set('s_flete','Dedicado'); S.flete_estimado=null; updateSummary(); return; }
+
+  // Calcular peso total del pedido
+  let pesoTotal=0;
+  (S.grupos&&S.grupos.length>0 ? S.grupos : []).forEach(g=>{
+    const pi=calcPesoEmbarque(parseFloat(g.m3)||0, g.cubierta||'');
+    pesoTotal += pi.kg * (parseInt(g.cantidad)||1);
+  });
+
+  // Seleccionar vehículo automáticamente
+  const vehiculo = FLETE_VEHICULOS.find(v=> pesoTotal <= v.cap_kg);
+
+  let html='';
+  if(!vehiculo){
+    // Excede Low Boy → fraccionado en varios trailers
+    const numTrailers=Math.ceil(pesoTotal/25000);
+    const totalEst=numTrailers*100*km;
+    html=`
+      <div style="font-weight:700;color:var(--blue);margin-bottom:8px;">🚛 Flete estimado — Carga extra (${pesoTotal.toLocaleString('es-MX')} kg)</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <tr><td style="padding:3px 0;">Vehículo sugerido</td><td style="text-align:right;font-weight:600;">${numTrailers} Trailer(s) (plana)</td></tr>
+        <tr><td>Distancia</td><td style="text-align:right;font-weight:600;">${km} km</td></tr>
+        <tr><td>Tarifa</td><td style="text-align:right;font-weight:600;">$100/km</td></tr>
+        <tr style="border-top:1.5px solid var(--border);"><td style="font-weight:700;padding-top:6px;">Total estimado</td><td style="text-align:right;font-weight:700;color:var(--blue);font-size:14px;padding-top:6px;">$${totalEst.toLocaleString('es-MX')} MXN</td></tr>
+      </table>
+      <div style="margin-top:8px;font-size:11px;color:var(--muted);">⚠️ Estimado sin seguro de carga — el seguro se incluirá en la cotización formal.</div>`;
+    S.flete_estimado={vehiculo:`${numTrailers} Trailer(s)`,km,pesoTotal,total:totalEst};
+    set('s_flete',`$${totalEst.toLocaleString('es-MX')} est.`);
+  } else if(vehiculo.tarifa===null){
+    // Low Boy → cotizar aparte
+    html=`
+      <div style="font-weight:700;color:var(--warn-fg);margin-bottom:8px;">⚠️ Low Boy requerido (${pesoTotal.toLocaleString('es-MX')} kg)</div>
+      <div style="font-size:12px;">El peso del pedido supera 25 toneladas. Se requiere <strong>Low Boy</strong> — tarifa a cotizar por separado con el transportista.</div>
+      <div style="margin-top:8px;font-size:11px;color:var(--muted);">El equipo de CAJA gestionará la tarifa e incluirá el flete en la cotización formal.</div>`;
+    S.flete_estimado={vehiculo:'Low Boy',km,pesoTotal,total:null};
+    set('s_flete','Low Boy (cotizar)');
+  } else {
+    const total=vehiculo.tarifa*km;
+    html=`
+      <div style="font-weight:700;color:var(--blue);margin-bottom:8px;">🚛 Flete estimado — ${vehiculo.nombre}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <tr><td style="padding:3px 0;">Vehículo</td><td style="text-align:right;font-weight:600;">${vehiculo.nombre}</td></tr>
+        <tr><td>Capacidad</td><td style="text-align:right;font-weight:600;">${(vehiculo.cap_kg/1000).toFixed(0)} ton máx.</td></tr>
+        <tr><td>Peso del pedido</td><td style="text-align:right;font-weight:600;">${pesoTotal.toLocaleString('es-MX')} kg</td></tr>
+        <tr><td>Distancia</td><td style="text-align:right;font-weight:600;">${km} km</td></tr>
+        <tr><td>Tarifa</td><td style="text-align:right;font-weight:600;">$${vehiculo.tarifa}/km</td></tr>
+        <tr style="border-top:1.5px solid var(--border);"><td style="font-weight:700;padding-top:6px;">Total estimado</td><td style="text-align:right;font-weight:700;color:var(--blue);font-size:14px;padding-top:6px;">$${total.toLocaleString('es-MX')} MXN</td></tr>
+      </table>
+      <div style="margin-top:8px;font-size:11px;color:var(--muted);">⚠️ Estimado sin seguro de carga — el seguro se incluirá en la cotización formal.</div>`;
+    S.flete_estimado={vehiculo:vehiculo.nombre,km,pesoTotal,total};
+    set('s_flete',`$${total.toLocaleString('es-MX')} est.`);
+  }
+  box.innerHTML=html;
+  box.hidden=false;
+  updateSummary();
+}
+
 function updateFleteLink(){
   const dir=v('flete_dir').trim();
   const link=document.getElementById('flete_maps_link');
@@ -1246,7 +1318,12 @@ function updateSummary(){
   set('s_vt',S.viaticos?'$'+S.viaticos.total.toFixed(0)+' MXN':null);
   const fSel=document.querySelector('input[name=flete]:checked');
   if(fSel) S.flete=fSel.value;
-  set('s_flete',S.flete==='dedicado'?'Dedicado':S.flete==='paqueteria'?'Paquetería':null);
+  if(S.flete==='dedicado' && S.flete_estimado){
+    const fe=S.flete_estimado;
+    set('s_flete', fe.total ? `${fe.vehiculo} · $${fe.total.toLocaleString('es-MX')} est.` : `${fe.vehiculo} (cotizar)`);
+  } else {
+    set('s_flete',S.flete==='dedicado'?'Dedicado':S.flete==='paqueteria'?'Paquetería':null);
+  }
 }
 function set(id,val){
   const el=document.getElementById(id);
