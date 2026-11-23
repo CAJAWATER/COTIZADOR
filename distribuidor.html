@@ -1419,9 +1419,40 @@ async function submitForm(){
       const {error:saveErr}=await _supa.from('solicitudes').insert(payload);
       if(saveErr) throw new Error(saveErr.message);
       console.log('✅ Solicitud guardada:',folio);
-      // Actualizar folio en pantalla si ya renderizó
+      // Actualizar folio en pantalla
       const folioEl=document.getElementById('done_folio');
       if(folioEl) folioEl.textContent=folio;
+      // Notificar a CAJA por correo
+      const tanquesResumen=(S.grupos||[]).map(g=>`${g.cantidad}× ${g.m3} m³ (${g.cubierta||'sin cubierta'})`).join(', ');
+      try{
+        await fetch('https://api.emailjs.com/api/v1.0/email/send',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            service_id:'service_o86gt7l',
+            template_id:'template_wxv4g9i',
+            user_id:'h2K9tXOsDNesnK0R9',
+            template_params:{
+              folio,
+              distribuidor:S.nombre_dist||'',
+              contacto:S.contacto_dist||'',
+              ref_proyecto:S.ref_proyecto||'',
+              ubicacion:S.ubicacion||S.geo_addr||'',
+              tanques_resumen:tanquesResumen,
+              membrana:S.grupos[0]?.membrana||'',
+              cubierta:S.grupos[0]?.cubierta||'',
+              flete:S.flete==='dedicado'?`Dedicado – ${S.flete_dir||''} (${S.flete_estimado?.total?'$'+S.flete_estimado.total.toLocaleString('es-MX')+' MXN est.':'cotizar'})`:S.flete==='paqueteria'?'Paquetería':'—',
+              viaticos:S.viaticos?'$'+S.viaticos.total.toFixed(0)+' MXN':'—',
+              email_dist:S.email||'',
+              notas:S.notas||'—',
+              to_email:'tanques@cajawater.com'
+            }
+          })
+        });
+        console.log('✅ Correo notificación enviado');
+      }catch(emailErr){
+        console.warn('⚠️ Email notify failed:',emailErr.message);
+      }
     }catch(e){
       console.warn('⚠️ Supabase save failed:',e.message);
     }
