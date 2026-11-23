@@ -760,6 +760,7 @@ textarea{resize:vertical;min-height:72px;}
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
 <script>
 // ── STATE ────────────────────────────────────────────────────────────────────
 const S = {
@@ -1334,25 +1335,23 @@ function set(id,val){
 }
 
 // ── SUBMIT ────────────────────────────────────────────────────────────────────
-// ── SUPABASE DIRECTO ─────────────────────────────────────────────────────
+// ── SUPABASE CLIENT ──────────────────────────────────────────────────────────
 const SUPA_URL='https://dzuwsckiesjheulsabjo.supabase.co';
 const SUPA_KEY='sb_publishable_bwqq0ew4ALIG-_ALSdiSiw_mL7C6iWF';
-async function supaFetch(path,method='GET',body=null){
-  const opts={method,headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'}};
-  if(body) opts.body=JSON.stringify(body);
-  const r=await fetch(`${SUPA_URL}/rest/v1/${path}`,opts);
-  if(!r.ok){const txt=await r.text();throw new Error(r.status+': '+txt);}
-  const txt=await r.text();
-  return txt?JSON.parse(txt):null;
-}
+const _supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+
 async function genFolio(){
   const yr=new Date().getFullYear().toString().slice(-2);
   const prefix=`CWT-${yr}-`;
   try{
-    const res=await supaFetch(`solicitudes?folio=like.${encodeURIComponent('CWT-'+yr+'-%')}&select=folio&order=folio.desc&limit=1`);
-    if(res&&res.length>0){
-      const last=res[0].folio;
-      const parts=last.split('-');
+    const {data,error}=await _supa
+      .from('solicitudes')
+      .select('folio')
+      .like('folio',`CWT-${yr}-%`)
+      .order('folio',{ascending:false})
+      .limit(1);
+    if(!error&&data&&data.length>0){
+      const parts=data[0].folio.split('-');
       const num=parseInt(parts[parts.length-1]||'0',10)||0;
       return prefix+String(num+1).padStart(4,'0');
     }
@@ -1417,7 +1416,8 @@ async function submitForm(){
         email_dest: S.email||'',
         notas: S.notas||''
       };
-      await supaFetch('solicitudes','POST',payload);
+      const {error:saveErr}=await _supa.from('solicitudes').insert(payload);
+      if(saveErr) throw new Error(saveErr.message);
       console.log('✅ Solicitud guardada:',folio);
       // Actualizar folio en pantalla si ya renderizó
       const folioEl=document.getElementById('done_folio');
