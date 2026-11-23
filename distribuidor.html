@@ -723,6 +723,7 @@ textarea{resize:vertical;min-height:72px;}
           <div class="done-icon">✅</div>
           <div class="done-title" id="doneTitle">Solicitud Recibida</div>
           <p class="done-sub" id="doneSub">Resumen de la información capturada para la cotización.</p>
+          <div id="done_folio_box" style="display:inline-block;margin-bottom:12px;padding:6px 14px;background:var(--step-done);border-radius:6px;font-size:13px;color:var(--blue);">Folio: <strong id="done_folio">guardando…</strong></div>
           <div style="overflow-x:auto;"><table class="summary-table" id="doneTable"></table></div>
           <button class="copy-btn" onclick="copyResumen()">📋 Copiar resumen</button>
           <div class="copy-confirm" id="copyConfirm">¡Copiado al portapapeles!</div>
@@ -1335,7 +1336,7 @@ function set(id,val){
 // ── SUBMIT ────────────────────────────────────────────────────────────────────
 // ── SUPABASE DIRECTO ─────────────────────────────────────────────────────
 const SUPA_URL='https://dzuwsckiesjheulsabjo.supabase.co';
-const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6dXdzY2tpZXNqaGV1bHNhYmpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4NjQzOTcsImV4cCI6MjEwNjQ0MDM5N30.-tBkv7xeyxdEFMvvI8bS2lK-vWrazl4xPaWaVUZed4k';
+const SUPA_KEY='sb_publishable_bwqq0ew4ALIG-_ALSdiSiw_mL7C6iWF';
 async function supaFetch(path,method='GET',body=null){
   const opts={method,headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'}};
   if(body) opts.body=JSON.stringify(body);
@@ -1348,11 +1349,11 @@ async function genFolio(){
   const yr=new Date().getFullYear().toString().slice(-2);
   const prefix=`CWT-${yr}-`;
   try{
-    // Buscar el último folio del año actual
-    const res=await supaFetch(`proyectos_instalacion?folio=like.${encodeURIComponent('CWT-'+yr+'-%')}&select=folio&order=folio.desc&limit=1`);
+    const res=await supaFetch(`solicitudes?folio=like.${encodeURIComponent('CWT-'+yr+'-%')}&select=folio&order=folio.desc&limit=1`);
     if(res&&res.length>0){
-      const last=res[0].folio; // 'CWT-26-0012'
-      const num=parseInt(last.split('-')[2]||'0',10)||0;
+      const last=res[0].folio;
+      const parts=last.split('-');
+      const num=parseInt(parts[parts.length-1]||'0',10)||0;
       return prefix+String(num+1).padStart(4,'0');
     }
   }catch(e){ console.warn('genFolio query failed:',e.message); }
@@ -1369,71 +1370,62 @@ async function submitForm(){
   const fSel=document.querySelector('input[name=flete]:checked');
   if(fSel) S.flete=fSel.value;
 
-  // Hide steps, show done screen
+  // Mostrar pantalla de éxito de inmediato (sin esperar Supabase)
   for(let i=1;i<=S.totalSteps;i++){const el=document.getElementById('step'+i);if(el)el.hidden=true;}
   document.getElementById('stepDone').hidden=false;
   renderDone();
   for(let i=1;i<=S.totalSteps;i++){const el=document.getElementById('ps'+i);if(el)el.className='prog-step done';}
 
-
-  // Save to Supabase
-  const folio=await genFolio();
-  S._folio=folio;
-  const datos_cliente={
-    nombre:S.contacto_dist||S.nombre_dist,
-    municipio:S.ubicacion||S.geo_addr||'',
-    estado:'',
-    direccion:S.flete_dir||'',
-    telefono:'',
-    km_leon:S.dist_km||null
-  };
-  // Construir array de tanques a partir de grupos
-  let peso_total_kg=0;
-  const tanquesArr=S.grupos.flatMap(g=>{
+  // Construir tanques JSON
+  let pesoTotal=0;
+  const tanquesJSON=(S.grupos||[]).map(g=>{
     const n=parseInt(g.cantidad)||1;
     const pc=calcPesoEmbarque(parseFloat(g.m3)||0, g.cubierta||'');
-    peso_total_kg+=pc.kg*n;
-    const t={
+    pesoTotal+=pc.kg*n;
+    return {
       m3:g.m3||null, cantidad:n,
       diam_max:g.diam_max||null, alt_max:g.alt_max||null,
       membrana:g.membrana||null, cubierta:g.cubierta||null,
       flanges_notas:g.flanges_notas||null,
       peso_kg_unitario:pc.kg||null
     };
-    return Array(n).fill(null).map(()=>({...t}));
   });
-  const datos_tanque={tanques:tanquesArr, peso_total_kg};
-  // Compat legacy para enviarCorreos
+
+  // Compat para renderDone
   S.cubierta=S.grupos[0]?.cubierta||'';
   S.volumen_m3=S.grupos[0]?.m3||'';
-  const pesoCalc={kg:peso_total_kg, estimado:true};
-  const payload={
-    folio,
-    distribuidor_nombre:S.nombre_dist,
-    distribuidor_email:S.email,
-    distribuidor_telefono:S.contacto_dist||'',
-    datos_cliente,
-    datos_tanque,
-    status:'pendiente'
-  };
-  try{
-    const res=await supaFetch('proyectos_instalacion',
-      'POST',
-      payload
-    );
-    const proj=Array.isArray(res)?res[0]:res;
-    const instToken=proj.instalador_token;
-    const fletToken=proj.fletero_token;
-    S._instLink=`https://cajawater.github.io/COTIZADOR/instalador.html#token=${instToken}`;
-    S._fletLink=`https://cajawater.github.io/COTIZADOR/fletero.html#token=${fletToken}`;
-    S._folio=proj.folio||folio;
-    renderLinks();
-    // Enviar correos automáticos
-    await enviarCorreos(S._folio, S._instLink, S._fletLink);
-  }catch(e){
-    console.warn('Supabase save failed:',e.message);
-    renderLinks(true);
-  }
+
+  // Guardar en Supabase (sin bloquear UI)
+  (async()=>{
+    try{
+      const folio=await genFolio();
+      S._folio=folio;
+      const payload={
+        folio,
+        fecha: new Date().toISOString(),
+        distribuidor: S.nombre_dist||'',
+        contacto: S.contacto_dist||'',
+        ref_proyecto: S.ref_proyecto||'',
+        ubicacion: S.ubicacion||S.geo_addr||'',
+        dist_km: S.dist_km ? parseFloat(S.dist_km) : null,
+        tanques: tanquesJSON,
+        membrana: S.membrana||S.grupos[0]?.membrana||'',
+        flete: S.flete||'',
+        flete_km: (S.flete==='dedicado'&&S.flete_estimado) ? S.flete_estimado.km : null,
+        flete_estimado_mxn: S.flete_estimado?.total||null,
+        viaticos_estimado_mxn: S.viaticos?.total||null,
+        email_dest: S.email||'',
+        notas: S.notas||''
+      };
+      await supaFetch('solicitudes','POST',payload);
+      console.log('✅ Solicitud guardada:',folio);
+      // Actualizar folio en pantalla si ya renderizó
+      const folioEl=document.getElementById('done_folio');
+      if(folioEl) folioEl.textContent=folio;
+    }catch(e){
+      console.warn('⚠️ Supabase save failed:',e.message);
+    }
+  })();
 }
 
 async function enviarCorreos(folio, instLink, fletLink) {
