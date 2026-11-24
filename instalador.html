@@ -140,6 +140,13 @@ textarea{min-height:80px;resize:vertical;}
         <label>Notas adicionales</label>
         <textarea id="inst_notas" placeholder="Condiciones, accesos necesarios, equipo requerido, etc."></textarea>
       </div>
+      <div class="form-group" style="background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px;">
+        <input type="checkbox" id="inst_estimado" style="width:18px;height:18px;margin-top:2px;accent-color:var(--blue);flex-shrink:0;">
+        <div>
+          <label for="inst_estimado" style="margin:0;cursor:pointer;">Este precio es un estimado provisional</label>
+          <p class="hint" style="margin-top:2px;">El instalador podrá enviar su cotización real después, que reemplazará este estimado.</p>
+        </div>
+      </div>
       <button class="btn" id="btn-enviar" onclick="enviarCotizacion()">ENVIAR COTIZACIÓN</button>
     </div>
   </div>
@@ -254,6 +261,7 @@ async function enviarCotizacion() {
   const precio = parseFloat(document.getElementById('inst_precio').value);
   const dias = parseInt(document.getElementById('inst_dias').value);
   const notas = document.getElementById('inst_notas').value.trim();
+  const esEstimado = document.getElementById('inst_estimado').checked;
 
   if(!nombre) { alert('Por favor ingresa tu nombre.'); return; }
   if(!email || !/^[^@]+@[^@]+\.[^@]+$/.test(email)) { alert('Por favor ingresa un correo válido.'); return; }
@@ -274,7 +282,8 @@ async function enviarCotizacion() {
         instalador_precio: precio,
         instalador_dias: dias,
         instalador_notas: notas || null,
-        instalador_status: 'respondido'
+        instalador_estimado: esEstimado,
+        instalador_status: esEstimado ? 'estimado' : 'respondido'
       }
     );
     document.getElementById('main').style.display='none';
