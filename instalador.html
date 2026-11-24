@@ -288,6 +288,45 @@ async function enviarCotizacion() {
     );
     document.getElementById('main').style.display='none';
     document.getElementById('done-screen').style.display='block';
+
+    // Notificar a CAJA por correo
+    const c = proyecto.datos_cliente || {};
+    const t = proyecto.datos_tanque || {};
+    const folio = proyecto.folio || '—';
+    const distribuidorNombre = proyecto.distribuidor_nombre || '—';
+    const precioFmt = '$' + precio.toLocaleString('es-MX', {minimumFractionDigits:0}) + ' MXN' + (esEstimado ? ' (ESTIMADO)' : '');
+    const textoClaudeCmd = `cotiza ${folio} — instalación ${precioFmt}`;
+    try {
+      await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          service_id: 'service_o86gt7l',
+          template_id: 'template_wxv4g9i',
+          user_id: 'h2K9tXOsDNesnK0R9',
+          template_params: {
+            folio,
+            distribuidor: distribuidorNombre,
+            contacto: nombre,
+            ref_proyecto: c.nombre || t.sku || '—',
+            ubicacion: c.municipio ? `${c.municipio}, ${c.estado||''}` : (c.ubicacion || '—'),
+            tanques_resumen: t.sku ? `${t.sku} ${t.m3||''}m³` : '—',
+            membrana: t.membrana || '—',
+            cubierta: t.cubierta || '—',
+            flete: '—',
+            viaticos: '—',
+            email_dist: email,
+            notas: `Instalación: ${precioFmt} · ${dias} días${notas ? ' · ' + notas : ''}`,
+            to_email: 'tanques@cajawater.com',
+            subject_line: `${folio} · Cotización instalador · ${distribuidorNombre}${esEstimado ? ' [ESTIMADO]' : ''}`,
+            claude_cmd: textoClaudeCmd
+          }
+        })
+      });
+    } catch(emailErr) {
+      console.warn('⚠️ Email notify failed:', emailErr.message);
+    }
+
   } catch(e) {
     document.getElementById('msg-error').style.display='block';
     document.getElementById('msg-error').textContent = '❌ Error: ' + e.message;
