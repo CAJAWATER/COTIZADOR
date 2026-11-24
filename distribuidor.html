@@ -1445,7 +1445,9 @@ async function submitForm(){
               viaticos:S.viaticos?'$'+S.viaticos.total.toFixed(0)+' MXN':'—',
               email_dist:S.email||'',
               notas:S.notas||'—',
-              to_email:'tanques@cajawater.com'
+              to_email:'tanques@cajawater.com',
+              cc_email:S.email||'',
+              subject_line:`${folio} · ${S.ref_proyecto||'Sin referencia'} · ${S.nombre_dist||'Distribuidor'}`
             }
           })
         });
