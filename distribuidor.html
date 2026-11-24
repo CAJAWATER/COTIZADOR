@@ -1462,8 +1462,7 @@ async function submitForm(){
 }
 
 async function enviarCorreos(folio, instLink, fletLink) {
-  const cliente = (S.datos_cliente?.nombre) || 'Cliente';
-  const ciudad  = (S.datos_cliente?.ciudad) || '';
+  const ciudad  = S.ubicacion || S.geo_addr || S.datos_cliente?.ciudad || '';
 
   const EMAILJS_SERVICE  = 'service_o86gt7l';
   const EMAILJS_USER     = 'h2K9tXOsDNesnK0R9';
@@ -1489,10 +1488,14 @@ async function enviarCorreos(folio, instLink, fletLink) {
     }
   };
 
+  const tanquesResumenInst = (S.grupos||[]).map(g=>`${g.cantidad}× ${g.m3} m³ (${g.cubierta||'sin cubierta'})`).join(', ');
   await sendEmail(TEMPLATE_INST, {
     to_email: 'zulema@agrialtec.mx',
     cc_email: 'erick@agrialtec.mx',
-    folio, cliente, ciudad,
+    folio,
+    destino: ciudad,
+    tanques: tanquesResumenInst || '—',
+    membrana: S.grupos[0]?.membrana || '—',
     link: instLink
   });
 
