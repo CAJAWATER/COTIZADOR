@@ -1455,6 +1455,11 @@ async function submitForm(){
       }catch(emailErr){
         console.warn('⚠️ Email notify failed:',emailErr.message);
       }
+      // Enviar correo al instalador (y fletero si aplica)
+      const BASE = 'https://cajawater.github.io/COTIZADOR';
+      const instLink = `${BASE}/instalador.html?folio=${encodeURIComponent(folio)}`;
+      const fletLink = `${BASE}/flete.html?folio=${encodeURIComponent(folio)}`;
+      await enviarCorreos(folio, instLink, fletLink);
     }catch(e){
       console.warn('⚠️ Supabase save failed:',e.message);
     }
@@ -1514,7 +1519,7 @@ async function enviarCorreos(folio, instLink, fletLink) {
 
     await sendEmail(TEMPLATE_FLET, {
       to_email: 'Transportes.colchado@hotmail.com',
-      folio, cliente, ciudad,
+      folio, ciudad,
       peso_embarque: pesoStr,
       link: fletLink
     });
