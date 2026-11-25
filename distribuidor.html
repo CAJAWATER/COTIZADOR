@@ -1419,6 +1419,29 @@ async function submitForm(){
       const {error:saveErr}=await _supa.from('solicitudes').insert(payload);
       if(saveErr) throw new Error(saveErr.message);
       console.log('✅ Solicitud guardada:',folio);
+      // Crear registro en proyectos_instalacion para el instalador
+      const instToken = crypto.randomUUID();
+      const primerGrupo = S.grupos[0] || {};
+      const instPayload = {
+        folio,
+        instalador_token: instToken,
+        distribuidor_nombre: S.nombre_dist||'',
+        datos_cliente: {
+          nombre: S.ref_proyecto||'',
+          municipio: S.ubicacion||S.geo_addr||'',
+          ubicacion: S.ubicacion||S.geo_addr||''
+        },
+        datos_tanque: {
+          sku: primerGrupo.m3 ? `S${primerGrupo.m3}` : '',
+          m3: primerGrupo.m3||'',
+          cubierta: primerGrupo.cubierta||'',
+          membrana: primerGrupo.membrana||''
+        },
+        instalador_status: 'pendiente'
+      };
+      const {error:instErr}=await _supa.from('proyectos_instalacion').insert(instPayload);
+      if(instErr) console.warn('⚠️ No se pudo crear proyecto instalador:',instErr.message);
+      else console.log('✅ Proyecto instalador creado con token');
       // Actualizar folio en pantalla
       const folioEl=document.getElementById('done_folio');
       if(folioEl) folioEl.textContent=folio;
@@ -1457,7 +1480,7 @@ async function submitForm(){
       }
       // Enviar correo al instalador (y fletero si aplica)
       const BASE = 'https://cajawater.github.io/COTIZADOR';
-      const instLink = `${BASE}/instalador.html?folio=${encodeURIComponent(folio)}`;
+      const instLink = `${BASE}/instalador.html?token=${instToken}`;
       const fletLink = `${BASE}/flete.html?folio=${encodeURIComponent(folio)}`;
       await enviarCorreos(folio, instLink, fletLink);
     }catch(e){
