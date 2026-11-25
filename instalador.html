@@ -222,11 +222,9 @@ async function cargarProyecto() {
     
     document.getElementById('specs-proyecto').innerHTML = [
       spec('Folio', proyecto.folio),
-      spec('Cliente', c.nombre),
       spec('Ubicación', c.municipio || c.ubicacion),
       spec('Estado', c.estado),
       spec('Uso', t.uso),
-      spec('Distribuidor', proyecto.distribuidor_nombre)
     ].join('');
 
     document.getElementById('specs-tanque').innerHTML = [
