@@ -1437,6 +1437,12 @@ async function submitForm(){
           cubierta: primerGrupo.cubierta||'',
           membrana: primerGrupo.membrana||''
         },
+        datos_grupos: S.grupos.map(g=>({
+          m3: g.m3||'',
+          cantidad: g.cantidad||1,
+          cubierta: g.cubierta||'',
+          membrana: g.membrana||''
+        })),
         instalador_status: 'pendiente'
       };
       const {error:instErr}=await _supa.from('proyectos_instalacion').insert(instPayload);
