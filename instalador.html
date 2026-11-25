@@ -227,13 +227,18 @@ async function cargarProyecto() {
       spec('Uso', t.uso),
     ].join('');
 
-    const grupos = proyecto.datos_grupos;
+    // Preferir datos_grupos, luego tanques (array completo), luego datos_tanque (legado 1 tanque)
+    const grupos = proyecto.datos_grupos
+      || (proyecto.tanques && proyecto.tanques.length > 0 ? proyecto.tanques.map(tk=>({
+            m3: tk.m3||tk.volumen_m3||'',
+            cantidad: tk.cantidad||1,
+            cubierta: tk.cubierta||'',
+            membrana: tk.membrana||''
+          })) : null);
+
     if (grupos && grupos.length > 1) {
       const tituloEl = document.getElementById('titulo-tanques');
       if (tituloEl) tituloEl.textContent = 'Tanques a Instalar';
-    }
-    if (grupos && grupos.length > 1) {
-      // Multi-grupo: mostrar cada uno
       document.getElementById('specs-tanque').innerHTML = grupos.map((g, i) => [
         `<div class="spec-item" style="grid-column:1/-1;padding-top:${i>0?'12px':0};border-top:${i>0?'1px solid var(--border)':''};margin-top:${i>0?'8px':0};">`,
         `<div class="spec-label">Grupo ${i+1}</div>`,
