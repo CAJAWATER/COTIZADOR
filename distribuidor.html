@@ -1443,7 +1443,6 @@ async function submitForm(){
           cubierta: g.cubierta||'',
           membrana: g.membrana||''
         })),
-        tanques: tanquesJSON,
         instalador_status: 'pendiente'
       };
       const {error:instErr}=await _supa.from('proyectos_instalacion').insert(instPayload);
